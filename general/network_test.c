@@ -207,10 +207,10 @@ int main( int argc, char *argv[]){
         
         ERR_NODE = 5000;
         // the equation of last convolutional layer 
-        float *equation_conv = (float*)malloc(sizeof(float) *\
+        float *equation_conv_low = (float*)malloc(sizeof(float) *\
                                 (inputSize+1)*maxLayerSize);
-        float *equation_conv_err = (float*)malloc(sizeof(float) *\
-                                ERR_NODE*maxLayerSize);
+        float *equation_conv_up = (float*)malloc(sizeof(float) *\
+                                (inputSize+1)*maxLayerSize);
 
         int err_row_conv = 0;
 
@@ -218,7 +218,7 @@ int main( int argc, char *argv[]){
                              &output_interval,\
                              grad, wrong_nodes_map, &wrong_node_length,\
                              &full_wrong_node_length,\
-                             equation_conv, equation_conv_err, &err_row_conv);
+                             equation_conv_low, equation_conv_up, &err_row_conv);
 
         printf("One shot approximation:\n");
         printf("upper_matrix:");
@@ -237,13 +237,15 @@ int main( int argc, char *argv[]){
 		avg_wrong_length += wrong_node_length; 
 
         printf("total wrong nodes: %d, wrong nodes in "\
-                    "fully connected layers: %d\n", wrong_node_length,\
+                    "fully connected layers: %d\n\n\n", wrong_node_length,\
                     full_wrong_node_length );
         /*
 		for(int w=0;w<wrong_node_length;w++){
             printf("%d,",wrong_nodes_map[w]);
         }
 		*/
+
+continue;
 
         bool output_map[outputSize];
         for(int oi=0;oi<outputSize;oi++){
@@ -293,7 +295,7 @@ int main( int argc, char *argv[]){
             is_overlap = split_interval_conv_lp(nnet, &input_interval,\
                                 output_map,\
                                 grad, wrong_nodes_map, &wrong_node_length, sigs,\
-                                equation_conv, equation_conv_err,\
+                                equation_conv_low, equation_conv_up,\
                                 err_row_conv,\
                                 lp, &rule_num, depth);
         }
@@ -331,8 +333,8 @@ int main( int argc, char *argv[]){
         printf("time: %f \n\n", time_spent);
         destroy_conv_network(nnet);
 
-        free(equation_conv);
-        free(equation_conv_err);
+        free(equation_conv_low);
+        free(equation_conv_up);
         delete_lp(lp);
 
     }

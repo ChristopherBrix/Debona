@@ -49,6 +49,8 @@ struct NNet
     float ****matrix; //4D jagged array that stores the weights and biases
                        //the neural network.
     struct Matrix* weights;
+    struct Matrix* positive_weights;
+    struct Matrix* negative_weights;
     struct Matrix* bias;
 
     int target;
@@ -60,7 +62,8 @@ struct NNet
 
 struct SymInterval
 {
-    struct Matrix *eq_matrix;
+    struct Matrix *matrix_low;
+    struct Matrix *matrix_up;
     struct Matrix *err_matrix;
 };
 
@@ -75,7 +78,8 @@ void relu_bound(struct SymInterval *sInterval, struct NNet *nnet,
                 float *low, float *up);
 
 int relax_relu(struct NNet *nnet, struct SymInterval *sym_interval,
-    float lower_bound, float upper_bound, int i,
+    float lower_bound, float upper_bound,
+    float up_lower_bound, float up_upper_bound, int i,
     int err_row, int *wrong_node_length, int *wcnt);
 
 int sym_relu_layer(struct SymInterval *new_sInterval, struct Interval *input, struct Interval *output,

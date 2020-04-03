@@ -54,8 +54,8 @@ struct direct_run_check_conv_lp_args
 	bool *output_map;
 	float *grad;
 	int *sigs;
-	float *equation_conv;
-	float *equation_conv_err;
+	float *equation_conv_low;
+	float *equation_conv_up;
 	float err_row_conv;
 	int target;
 	lprec *lp;
