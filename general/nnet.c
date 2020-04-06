@@ -337,6 +337,8 @@ void destroy_conv_network(struct NNet *nnet)
             free(nnet->matrix[i][0]);
             free(nnet->matrix[i][1]);
             free(nnet->weights[i].data);
+            free(nnet->positive_weights[i].data);
+            free(nnet->negative_weights[i].data);
             free(nnet->bias[i].data);
             free(nnet->matrix[i]);
         }
@@ -359,6 +361,8 @@ void destroy_conv_network(struct NNet *nnet)
         }
         free(nnet->convLayer);
         free(nnet->weights);
+        free(nnet->positive_weights);
+        free(nnet->negative_weights);
         free(nnet->bias);
         free(nnet->layerSizes);
         free(nnet->layerTypes);
@@ -1031,6 +1035,7 @@ void relu_bound(struct SymInterval *sInterval,
     for(int k=0;k<inputSize+1;k++){
         float weight_low = (*sInterval->matrix_low).data[k+i*(inputSize+1)];
         float weight_up = (*sInterval->matrix_up).data[k+i*(inputSize+1)];
+
         if(weight_low>=0){
             tempVal_lower +=\
                 weight_low * input->lower_matrix.data[k]-needed_outward_round;
@@ -1103,11 +1108,11 @@ int relax_relu(struct NNet *nnet, struct SymInterval *sym_interval,
         (*sym_interval->err_matrix).data[*wrong_node_length-1+i*ERR_NODE] -= \
             low_lower_bound*scaling;
 
-        printf("Error increase: %f \n", low_lower_bound*scaling);
+        //printf("Error increase: %f \n", low_lower_bound*scaling);
 
-        printf("UP (%f - %f), LOW (%f - %f), Scale: %f \n",
-         up_lower_bound, up_upper_bound, low_lower_bound, low_upper_bound,
-         scaling);
+        //printf("UP (%f - %f), LOW (%f - %f), Scale: %f \n",
+        // up_lower_bound, up_upper_bound, low_lower_bound, low_upper_bound,
+        // scaling);
 
 
         //if(up_lower_bound < 0) {
@@ -1132,21 +1137,23 @@ int relax_relu(struct NNet *nnet, struct SymInterval *sym_interval,
             for(int k=0;k<inputSize+1;k++){
                 (*sym_interval->matrix_low).data[k+i*(inputSize+1)] = 0;
             }
+            exit(1);
         }   
 
         float dg = -low_lower_bound*scaling;
         float fh = -low_lower_bound - dg;
 
         if(up_upper_bound > -low_lower_bound) {
-            printf("My mode may be better \n");
+            //printf("My mode may be better \n");
             for(int k=0;k<inputSize+1;k++){
                 (*sym_interval->matrix_low).data[k+i*(inputSize+1)] /= scaling;
             }
             for(int err_ind=0;err_ind<err_row;err_ind++){
                 (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] /= scaling;
             }
+            //(*sym_interval->err_matrix).data[*wrong_node_length-1+i*ERR_NODE] /= scaling;
         }
-        printf("dg=%f fh=%f \n", dg, fh);
+        //printf("dg=%f fh=%f \n", dg, fh);
         
         return 1;
     }
@@ -1203,12 +1210,12 @@ int sym_relu_layer(struct SymInterval *new_sInterval,
             if(R[layer][i] == 1) {
                 wrong_nodes_map[(*wrong_node_length) - 1] = *node_cnt;
             }
-            low_tempVal_upper = low_tempVal_lower = up_tempVal_upper = up_tempVal_lower = 0;
-            relu_bound(&upper_interval, nnet, input, i, layer, err_row, &up_tempVal_lower, &up_tempVal_upper);
-            relu_bound(&lower_interval, nnet, input, i, layer, err_row, &low_tempVal_lower, &low_tempVal_upper);
-
-            printf("=> UP (%f - %f), LOW (%f - %f) \n",
-                up_tempVal_lower, up_tempVal_upper, low_tempVal_lower, low_tempVal_upper);
+            //low_tempVal_upper = low_tempVal_lower = up_tempVal_upper = up_tempVal_lower = 0;
+            //relu_bound(&upper_interval, nnet, input, i, layer, err_row, &up_tempVal_lower, &up_tempVal_upper);
+            //relu_bound(&lower_interval, nnet, input, i, layer, err_row, &low_tempVal_lower, &low_tempVal_upper);
+//
+            //printf("=> UP (%f - %f), LOW (%f - %f) \n",
+            //    up_tempVal_lower, up_tempVal_upper, low_tempVal_lower, low_tempVal_upper);
         }
         (*node_cnt) += 1;  
     }
@@ -1367,4 +1374,6 @@ void forward_prop_interval_equation_linear_conv(struct NNet *nnet,
     free(equation_up);
     free(new_equation_low);
     free(new_equation_up);
+    free(equation_err);
+    free(new_equation_err);
 }
