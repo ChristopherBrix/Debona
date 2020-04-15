@@ -245,6 +245,8 @@ int main( int argc, char *argv[]){
         }
 		*/
 
+    //continue;
+
         bool output_map[outputSize];
         for(int oi=0;oi<outputSize;oi++){
             if(output_interval.upper_matrix.data[oi]>\

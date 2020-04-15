@@ -16,7 +16,7 @@ int PROPERTY = 5;
 char *LOG_FILE = "logs/log.txt";
 float INF = 1;
 
-int ERR_NODE=10;
+int ERR_NODE=5000;
 
 int NORM_INPUT=1;
 
@@ -415,7 +415,6 @@ void sort_layers(int numLayers, int *layerSizes, int wrong_node_length, int *wro
 		
 	}
     memcpy(wrong_nodes_map, wrong_nodes_tmp, sizeof(int)*wrong_node_length);
-    // printf("%d\n", wrong_nodes_map[0]);
 }
 
 
@@ -997,7 +996,6 @@ void sym_fc_layer(struct SymInterval *sInterval,
         (*new_sInterval->err_matrix).row = (*sInterval->err_matrix).row = err_row;
     }
 
-
     int inputSize = nnet->inputSize;
     for (int i=0; i < nnet->layerSizes[layer+1]; i++){
         (*new_sInterval->matrix_low).data[inputSize+i*(inputSize+1)] += \
@@ -1023,7 +1021,8 @@ void sym_conv_layer(struct SymInterval *sInterval,
 void relu_bound(struct SymInterval *sInterval,
                 struct NNet *nnet, 
                 struct Interval *input, int i, int layer, int err_row, 
-                float *low, float *up){
+                float *low, float *up, int ignore){
+    //ignore = 0;
     float tempVal_upper=0.0, tempVal_lower=0.0;
     int inputSize = nnet->inputSize;
 
@@ -1057,12 +1056,37 @@ void relu_bound(struct SymInterval *sInterval,
     
     for(int err_ind=0;err_ind<err_row;err_ind++){
         float error_value = (*sInterval->err_matrix).data[err_ind+i*ERR_NODE];
-        if(error_value > 0){
-            tempVal_upper += error_value;
+
+        if(ignore == 0) {
+            if(error_value > 0) {
+                tempVal_upper += error_value;
+            }
+            else {
+                tempVal_lower += error_value;
+            }
         }
-        else{
-            tempVal_lower += error_value;
+        else if(ignore == 1) {
+            if(error_value < 0) {
+                tempVal_upper += error_value;
+                tempVal_lower += error_value;
+            }
         }
+        else if(ignore == 2) {
+            if(error_value > 0) {
+                tempVal_upper += error_value;
+                tempVal_lower += error_value;
+            }
+        }
+        else {
+            printf("Invalid ignore argument! \n");
+            exit(1);
+        }
+        //if(ignore != 1 && error_value > 0){
+        //    tempVal_upper += error_value;
+        //}
+        //else if(ignore != 2 && error_value < 0) {
+        //    tempVal_lower += error_value;
+        //}
     }
 
     *up = tempVal_upper;
@@ -1071,24 +1095,77 @@ void relu_bound(struct SymInterval *sInterval,
 
 int relax_relu(struct NNet *nnet, struct SymInterval *sym_interval,
     float low_lower_bound, float low_upper_bound,
-    float up_lower_bound, float up_upper_bound, int i,
-    int err_row, int *wrong_node_length, int *wcnt) {
+    float up_lower_bound, float up_upper_bound, struct Interval *input, int i, int layer,
+    int *err_row, int *wrong_node_length, int *wcnt, bool ignore_invalid_output) {
     int inputSize = nnet->inputSize;
 
+    if(low_lower_bound > low_upper_bound || up_lower_bound > up_upper_bound) {
+        printf("Invalid bounds \n");
+        exit(1);
+    }
+
+    if(low_lower_bound > up_lower_bound || low_upper_bound > up_upper_bound) {
+        printf("Invalid (switched) bounds \n");
+        printf("(%f - %f) - (%f - %f) \n", low_lower_bound, low_upper_bound, up_lower_bound, up_upper_bound);
+        //printf("Upper: "); printMatrix(sym_interval->matrix_up);
+        //printf("Lower: "); printMatrix(sym_interval->matrix_low);
+        //printf("Error: "); printMatrix(sym_interval->err_matrix);
+        exit(1);
+    }
+    //else {
+    //    printf("Alright bounds \n");
+    //    printf("(%f - %f) - (%f - %f) \n", low_lower_bound, low_upper_bound, up_lower_bound, up_upper_bound);
+    //}
+
     //printf("relu relaxation\n");
+    int result = -1;
     if (up_upper_bound<=0.0){
         for(int k=0;k<inputSize+1;k++){
             (*sym_interval->matrix_low).data[k+i*(inputSize+1)] = 0;
             (*sym_interval->matrix_up).data[k+i*(inputSize+1)] = 0;
         }
-        for(int err_ind=0;err_ind<err_row;err_ind++){
+        for(int err_ind=0;err_ind<*err_row;err_ind++){
             (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] = 0;
 
         }
-        return 0;
+
+        float err_low = 0;
+        float err_up = 0;
+        for(int err_ind=0;err_ind<*err_row;err_ind++){
+            float err = (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE];
+            if(err < 0) {
+                err_low += err;
+            }
+            if(err > 0) {
+                err_up += err;
+            }
+            (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] = 0;
+        }
+        *err_row += 1;
+        (*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] = err_low;
+        *err_row += 1;
+        (*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] = err_up;
+        result = 0;
     }
     else if(low_lower_bound>=0.0){
-        return 2;
+
+        float err_low = 0;
+        float err_up = 0;
+        for(int err_ind=0;err_ind<*err_row;err_ind++){
+            float err = (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE];
+            if(err < 0) {
+                err_low += err;
+            }
+            if(err > 0) {
+                err_up += err;
+            }
+            (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] = 0;
+        }
+        *err_row += 1;
+        (*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] = err_low;
+        *err_row += 1;
+        (*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] = err_up;
+        result = 2;
     }
     else{
         int actions = 0;
@@ -1106,41 +1183,95 @@ int relax_relu(struct NNet *nnet, struct SymInterval *sym_interval,
                 for(int k=0;k<inputSize+1;k++){
                     (*sym_interval->matrix_low).data[k+i*(inputSize+1)] *= scaling;
                 }
-                for(int err_ind=0;err_ind<err_row;err_ind++){
+                for(int err_ind=0;err_ind<*err_row;err_ind++){
                     if((*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] < 0) {
+                        //printf("(LOW) Scaling error %d (%f) \n", err_ind, (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE]);
                         (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] *= scaling;
                     }
                 }
             }
             
-            //(*sym_interval->err_matrix).data[*wrong_node_length-1+i*ERR_NODE] += \
-            //    low_lower_bound*scaling;
         }
         if((up_lower_bound < 0 && up_upper_bound > 0)) {
             actions++;
             
             *wrong_node_length += 1;
             *wcnt += 1;
+            *err_row += 1;
 
             float scaling = up_upper_bound / (up_upper_bound - up_lower_bound);
             //printf("Updating upper bound (%f) \n", scaling);
             for(int k=0;k<inputSize+1;k++){
                 (*sym_interval->matrix_up).data[k+i*(inputSize+1)] *= scaling;
             }
-            for(int err_ind=0;err_ind<err_row;err_ind++){
+            for(int err_ind=0;err_ind<*err_row;err_ind++){
                 if((*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] > 0) {
+                    //printf("(UP) Scaling error %d (%f) \n", err_ind, (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE]);
                     (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] *= scaling;
                 }
             }
             
-            (*sym_interval->err_matrix).data[*wrong_node_length-1+i*ERR_NODE] -= \
-                low_lower_bound*scaling;
+            if((*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] != 0) {
+                printf("New error value should initially be zero. \n");
+                exit(1);
+            }
+            (*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] -= \
+                up_lower_bound*scaling;
         }
+
+        float err_low = 0;
+        float err_up = 0;
+        for(int err_ind=0;err_ind<*err_row;err_ind++){
+            float err = (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE];
+            if(err < 0) {
+                err_low += err;
+            }
+            if(err > 0) {
+                err_up += err;
+            }
+            (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] = 0;
+        }
+        *err_row += 1;
+        (*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] = err_low;
+        *err_row += 1;
+        (*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] = err_up;
 
         if(actions == 2) {
             *wcnt -= 1;
             *wrong_node_length -= 1;
         }
+
+        if(low_upper_bound <= 0) {
+            //printf("Setting lower to constant 0 \n");
+            for(int k=0;k<inputSize+1;k++){
+                (*sym_interval->matrix_low).data[k+i*(inputSize+1)] = 0;
+            }
+            for(int err_ind=0;err_ind<*err_row;err_ind++){
+                if((*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] < 0) {
+                    (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] = 0;
+                }
+            }
+            //exit(1);
+            actions++;
+            low_upper_bound=99999999; // prevent double execution (see below)
+        }  
+
+
+
+        if(low_upper_bound <= -low_lower_bound) {
+            //printf("UPGRADE: Setting lower to constant 0 \n");
+            for(int k=0;k<inputSize+1;k++){
+                (*sym_interval->matrix_low).data[k+i*(inputSize+1)] = 0;
+            }
+            for(int err_ind=0;err_ind<*err_row;err_ind++){
+                if((*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] < 0) {
+                    (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] = 0;
+                }
+            }
+            //exit(1);
+            actions++;
+            low_upper_bound=99999999; // prevent double execution (see below)
+        }  
         
         if(actions == 0) {
             printf("Why was no action applied? %f - %f, %f - %f \n",
@@ -1175,20 +1306,46 @@ int relax_relu(struct NNet *nnet, struct SymInterval *sym_interval,
         //    }
         //}
         if(low_upper_bound <= 0) {
-            printf("Setting lower to constant 0 \n");
-            for(int k=0;k<inputSize+1;k++){
-                (*sym_interval->matrix_low).data[k+i*(inputSize+1)] = 0;
-            }
-            for(int err_ind=0;err_ind<err_row;err_ind++){
-                if((*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] < 0) {
-                    (*sym_interval->err_matrix).data[err_ind+i*ERR_NODE] = 0;
-                }
-            }
-            //exit(1);
+            printf("2) Setting lower to constant 0 \n");
+            exit(1);
         }  
         
-        return 10 + actions;
+        result = 10 + actions;
     }
+
+    float low_tempVal_upper = 0;
+    float low_tempVal_lower = 0;
+    float up_tempVal_upper = 0;
+    float up_tempVal_lower = 0;
+    struct SymInterval upper_interval = {
+        sym_interval->matrix_up, 
+        sym_interval->matrix_up, sym_interval->err_matrix
+    };
+    struct SymInterval lower_interval = {
+        sym_interval->matrix_low, 
+        sym_interval->matrix_low, sym_interval->err_matrix
+    };
+
+    relu_bound(&upper_interval, nnet, input, i, layer, *err_row, &up_tempVal_lower, &up_tempVal_upper, 2);
+    relu_bound(&lower_interval, nnet, input, i, layer, *err_row, &low_tempVal_lower, &low_tempVal_upper, 1);
+
+
+    if(!ignore_invalid_output && up_tempVal_lower < 0) {
+        if(up_tempVal_lower < -0.00001) {
+            printf("Lower bound of upper bound must never be less " \
+                "than zero, but is %.20f \n", up_tempVal_lower);
+            exit(1);
+        }
+        else {
+            *err_row += 1;
+            (*sym_interval->err_matrix).data[*err_row-1+i*ERR_NODE] = -up_tempVal_lower;
+        }
+    }
+
+    if(result < 0) {
+        printf("No relaxation action was taken?! \n");
+    }
+    return result;
 }
 
 
@@ -1198,21 +1355,23 @@ int sym_relu_layer(struct SymInterval *new_sInterval,
                     struct Interval *output,
                     struct NNet *nnet, 
                     int R[][nnet->maxLayerSize],
-                    int layer, int err_row,
+                    int layer, int *err_row,
                     int *wrong_nodes_map, 
-                    int*wrong_node_length,
+                    int *wrong_node_length,
                     int *node_cnt)
-{    
+{
+    int inputSize = nnet->inputSize;
+    
     //record the number of wrong nodes
     int wcnt = 0;
 
     for (int i=0; i < nnet->layerSizes[layer+1]; i++)
     {
         float tempVal_upper=0.0, tempVal_lower=0.0;
-        relu_bound(new_sInterval, nnet, input, i, layer, err_row,\
-                    &tempVal_lower, &tempVal_upper);
+        relu_bound(new_sInterval, nnet, input, i, layer, *err_row,\
+                    &tempVal_lower, &tempVal_upper, 0);
 
-        printf("Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
+        //printf("Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
         
         //Perform ReLU relaxation
         if(layer == nnet->numLayers - 1) {
@@ -1233,21 +1392,27 @@ int sym_relu_layer(struct SymInterval *new_sInterval,
                 new_sInterval->matrix_low, new_sInterval->err_matrix
             };
 
-            relu_bound(&upper_interval, nnet, input, i, layer, err_row, &up_tempVal_lower, &up_tempVal_upper);
-            relu_bound(&lower_interval, nnet, input, i, layer, err_row, &low_tempVal_lower, &low_tempVal_upper);
+            relu_bound(&upper_interval, nnet, input, i, layer, *err_row, &up_tempVal_lower, &up_tempVal_upper, 2);
+            relu_bound(&lower_interval, nnet, input, i, layer, *err_row, &low_tempVal_lower, &low_tempVal_upper, 1);
+
+            //printf("Before relax UP (%f - %f), LOW (%f - %f) \n",
+            //    up_tempVal_lower, up_tempVal_upper, low_tempVal_lower, low_tempVal_upper);
 
             R[layer][i] = relax_relu(nnet, new_sInterval, low_tempVal_lower, low_tempVal_upper, up_tempVal_lower, up_tempVal_upper,
-                i, err_row, wrong_node_length, &wcnt);
+                input, i, layer, err_row, wrong_node_length, &wcnt, false);
 
             if(R[layer][i] > 10) {
                 wrong_nodes_map[(*wrong_node_length) - 1] = *node_cnt;
             }
-            //low_tempVal_upper = low_tempVal_lower = up_tempVal_upper = up_tempVal_lower = 0;
-            //relu_bound(&upper_interval, nnet, input, i, layer, err_row, &up_tempVal_lower, &up_tempVal_upper);
-            //relu_bound(&lower_interval, nnet, input, i, layer, err_row, &low_tempVal_lower, &low_tempVal_upper);
-//
-            //printf("=> UP (%f - %f), LOW (%f - %f) \n",
-            //    up_tempVal_lower, up_tempVal_upper, low_tempVal_lower, low_tempVal_upper);
+
+            tempVal_upper=0.0, tempVal_lower=0.0;
+            relu_bound(new_sInterval, nnet, input, i, layer, *err_row,\
+                        &tempVal_lower, &tempVal_upper, 0);
+
+            //printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
+
+
+            
         }
         (*node_cnt) += 1;  
     }
@@ -1338,6 +1503,12 @@ void forward_prop_interval_equation_linear_conv(struct NNet *nnet,
     int err_row=0;
     for (int layer = 0; layer<numLayers; layer++)
     {
+        //printf("\n\nLayer %d \n", layer);
+        //printf("Init Upper: "); printMatrix(sInterval.matrix_up);
+        //printf("Init Lower: "); printMatrix(sInterval.matrix_low);
+        //printf("Init Error: "); printMatrix(sInterval.err_matrix);
+
+
         // printf("%d, %d", layer, nnet->layerSizes[layer]);
 
         memset(new_equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
@@ -1348,6 +1519,10 @@ void forward_prop_interval_equation_linear_conv(struct NNet *nnet,
             // FC layer
             
             sym_fc_layer(&sInterval, &new_sInterval, nnet, layer, err_row);
+        
+            //printf("new_sInterval Upper: "); printMatrix(new_sInterval.matrix_up);
+            //printf("new_sInterval Lower: "); printMatrix(new_sInterval.matrix_low);
+            //printf("new_sInterval Error: "); printMatrix(new_sInterval.err_matrix);
             
             /*store equation and error matrix for later splitting*/
             if(layer == 0 || (CHECK_ADV_MODE && nnet->layerTypes[layer]==0 && \
@@ -1362,7 +1537,7 @@ void forward_prop_interval_equation_linear_conv(struct NNet *nnet,
             }
             
             int wcnt = sym_relu_layer(&new_sInterval, input, output, nnet, R,
-                                layer, err_row, wrong_nodes_map,
+                                layer, &err_row, wrong_nodes_map,
                                 wrong_node_length, &node_cnt);
             
             *full_wrong_node_length = *full_wrong_node_length + wcnt;
@@ -1383,7 +1558,8 @@ void forward_prop_interval_equation_linear_conv(struct NNet *nnet,
             }
 
             sym_relu_layer(&new_sInterval, input, output, nnet, R, layer,
-                err_row, wrong_nodes_map, wrong_node_length, &node_cnt);
+                &err_row, wrong_nodes_map, wrong_node_length, &node_cnt);
+
         }
 
         //printf("Layer equations: \n");
@@ -1397,7 +1573,11 @@ void forward_prop_interval_equation_linear_conv(struct NNet *nnet,
         equation_matrix_low.col = new_equation_matrix_low.col;
         equation_matrix_up.col = new_equation_matrix_up.col;
         equation_err_matrix.col = new_equation_err_matrix.col;
-        err_row = *wrong_node_length;
+
+        if(err_row >= ERR_NODE) {
+            printf("err_row = %d > %d \n", err_row, ERR_NODE);
+            exit(1);
+        }
     }
 
     backward_prop_conv(nnet, grad, R);

@@ -286,7 +286,7 @@ int min(float a, float b){
 int sym_relu_lp(struct SymInterval *new_sInterval,
                     struct Interval *input,
                     struct NNet *nnet,
-                    int layer, int err_row,
+                    int layer, int *err_row,
                     int *wrong_nodes_map, 
                     int*wrong_node_length, int *node_cnt,
                     int target, int *sigs,
@@ -314,32 +314,36 @@ int sym_relu_lp(struct SymInterval *new_sInterval,
             new_sInterval->matrix_low, new_sInterval->err_matrix
         };
 
-        relu_bound(&upper_interval, nnet, input, i, layer, err_row, &up_tempVal_lower, &up_tempVal_upper);
-        relu_bound(&lower_interval, nnet, input, i, layer, err_row, &low_tempVal_lower, &low_tempVal_upper);
+        relu_bound(&upper_interval, nnet, input, i, layer, *err_row, &up_tempVal_lower, &up_tempVal_upper, 2);
+        relu_bound(&lower_interval, nnet, input, i, layer, *err_row, &low_tempVal_lower, &low_tempVal_upper, 1);
 
 
         if(*node_cnt == target){
-            if(err_row > 0) {
-                printf("err_row (%d) must not be > 0 \n", err_row);
-                exit(1);
+            for(int err_ind=0;err_ind<*err_row;err_ind++){
+                if((*new_sInterval->err_matrix).data[err_ind+i*ERR_NODE] != 0) {
+                    printf("Effective err_row (%d) must not be > 0 (cnt=%d) \n", *err_row, *node_cnt);
+                    exit(1);
+                }
             }
 
             if(sigs[target]==1){
                 set_node_constraints(lp, (*new_sInterval->matrix_low).data,\
-                        i*(inputSize+1), rule_num, sigs[target], inputSize);
-                set_node_constraints(lp, (*new_sInterval->matrix_up).data,\
-                        i*(inputSize+1), rule_num, sigs[target], inputSize);
+                        i*(inputSize+1), rule_num, 1, inputSize);
+                //set_node_constraints(lp, (*new_sInterval->matrix_up).data,\
+                //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
             else{
                 set_node_constraints(lp, (*new_sInterval->matrix_up).data,\
-                        i*(inputSize+1), rule_num, sigs[target], inputSize);
-                set_node_constraints(lp, (*new_sInterval->matrix_low).data,\
-                        i*(inputSize+1), rule_num, sigs[target], inputSize);
+                        i*(inputSize+1), rule_num, 0, inputSize);
+                //set_node_constraints(lp, (*new_sInterval->matrix_low).data,\
+                //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
         }
 
         // handle the nodes that are split
         if(sigs[*node_cnt] == 0){
+            low_tempVal_upper = 0;
+            up_tempVal_upper = 0;
             if(low_tempVal_upper > 0) {
                 low_tempVal_upper = 0;
             }
@@ -371,10 +375,35 @@ int sym_relu_lp(struct SymInterval *new_sInterval,
         }
 
         //Perform ReLU relaxation
-        
+        if(low_tempVal_lower > low_tempVal_upper || up_tempVal_lower > up_tempVal_upper) {
+            printf("2) Invalid bounds \n");
+            exit(1);
+        }
+
+        if(low_tempVal_lower > up_tempVal_lower || low_tempVal_upper > up_tempVal_upper) {
+            printf("2) Invalid (switched) bounds \n");
+            printf("(%f - %f) - (%f - %f) \n", low_tempVal_lower, low_tempVal_upper, up_tempVal_lower, up_tempVal_upper);
+            //printf("Upper: "); printMatrix(sym_interval->matrix_up);
+            //printf("Lower: "); printMatrix(sym_interval->matrix_low);
+            //printf("Error: "); printMatrix(sym_interval->err_matrix);
+            exit(1);
+        }
+    
+        //printf("Before relax UP (%f - %f), LOW (%f - %f) \n",
+        //    up_tempVal_lower, up_tempVal_upper, low_tempVal_lower, low_tempVal_upper);
+
             
-        int action = relax_relu(nnet, new_sInterval, low_tempVal_lower, low_tempVal_upper, up_tempVal_lower, up_tempVal_upper, i,
-            err_row, wrong_node_length, &wcnt);
+            
+        int action = relax_relu(nnet, new_sInterval, low_tempVal_lower, low_tempVal_upper,
+            up_tempVal_lower, up_tempVal_upper, input, i, layer,
+            err_row, wrong_node_length, &wcnt, true);
+
+        float tempVal_upper=0.0, tempVal_lower=0.0;
+        relu_bound(new_sInterval, nnet, input, i, layer, *err_row,\
+                    &tempVal_lower, &tempVal_upper, 0);
+
+        //printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
+
 
         if(action == 1) {
             wrong_nodes_map[(*wrong_node_length) - 1] = *node_cnt;
@@ -488,7 +517,7 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
         if(layer<(numLayers-1)){
             // printf("relu layer\n");
             sym_relu_lp(&new_sInterval, input, nnet, layer,\
-                        err_row, wrong_nodes_map, wrong_node_length, &node_cnt,\
+                        &err_row, wrong_nodes_map, wrong_node_length, &node_cnt,\
                         target, sigs, lp, rule_num);
         }
         else{
@@ -499,9 +528,10 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                 if(NEED_PRINT){
                     float tempVal_upper=0.0, tempVal_lower=0.0;
                     relu_bound(&new_sInterval, nnet, input, i, layer, err_row,\
-                            &tempVal_lower, &tempVal_upper);
-                    printf("target:%d, sig:%d, node:%d, l:%f, u:%f\n",\
-                                target, sigs[target], i, tempVal_lower, tempVal_upper);
+                            &tempVal_lower, &tempVal_upper, 0);
+                    //printf("target:%d, sig:%d, node:%d, l:%f, u:%f\n",\
+                    //            target, sigs[target], i, tempVal_lower, tempVal_upper);
+                    printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
                 }
                 
 
@@ -583,6 +613,11 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
         equation_err_matrix.row = new_equation_err_matrix.row;
         equation_err_matrix.col = new_equation_err_matrix.col;
         err_row = *wrong_node_length;
+
+        if(err_row >= ERR_NODE) {
+            printf("err_row = %d > %d \n", err_row, ERR_NODE);
+            exit(1);
+        }
     }
 
     //printf("sig:%d, need_to_split:%d\n",sig, need_to_split );
