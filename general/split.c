@@ -405,7 +405,7 @@ int sym_relu_lp(struct SymInterval *new_sInterval,
         //printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
 
 
-        if(action == 1) {
+        if(action >= 10) {
             wrong_nodes_map[(*wrong_node_length) - 1] = *node_cnt;
         }
 
@@ -612,7 +612,7 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
         equation_matrix_up.col = new_equation_matrix_up.col;
         equation_err_matrix.row = new_equation_err_matrix.row;
         equation_err_matrix.col = new_equation_err_matrix.col;
-        err_row = *wrong_node_length;
+        //err_row = *wrong_node_length;
 
         if(err_row >= ERR_NODE) {
             printf("err_row = %d > %d \n", err_row, ERR_NODE);
