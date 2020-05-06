@@ -250,7 +250,6 @@ void check_adv1(struct NNet* nnet, struct Matrix *adv){
 int pop_queue(int *wrong_nodes, int *wrong_node_length){
     if(*wrong_node_length==0){
         printf("underflow\n");
-        analysis_uncertain = true;
         return -1;
     }
     int node = wrong_nodes[0];
@@ -651,6 +650,12 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     sort_layers(nnet->numLayers, nnet->layerSizes,\
             *wrong_node_length, wrong_nodes);
     int target = pop_queue(wrong_nodes, wrong_node_length);
+    if(target == -1) {
+        pthread_mutex_lock(&lock);
+        analysis_uncertain = true;
+        pthread_mutex_unlock(&lock);
+        return false;
+    }
     // printf("%d, %d\n", wrong_nodes[0], wrong_nodes[1]);
     bool isOverlap1 = false;
     bool isOverlap2 = false;
