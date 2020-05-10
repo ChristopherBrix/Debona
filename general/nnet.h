@@ -48,10 +48,10 @@ struct NNet
     float max;     //Maximum value of inputs
     float ****matrix; //4D jagged array that stores the weights and biases
                        //the neural network.
-    struct Matrix* weights;
-    struct Matrix* positive_weights;
-    struct Matrix* negative_weights;
-    struct Matrix* bias;
+    struct Matrix* weights_low;
+    struct Matrix* weights_up;
+    struct Matrix* bias_low;
+    struct Matrix* bias_up;
 
     int target;
     int *feature_range;
@@ -64,7 +64,6 @@ struct SymInterval
 {
     struct Matrix *matrix_low;
     struct Matrix *matrix_up;
-    struct Matrix *err_matrix;
 };
 
 
@@ -73,7 +72,7 @@ void sym_fc_layer(struct SymInterval *sInterval, struct SymInterval *new_sInterv
 
 void sym_conv_layer(struct SymInterval *sInterval, struct SymInterval *new_sInterval, struct NNet *nnet, int layer, int err_row);
 
-void relu_bound(struct SymInterval *sInterval, struct NNet *nnet, 
+void relu_bound(struct NNet *nnet, 
                 struct Interval *input, int i, int layer, int err_row, 
                 float *low, float *up, int ignore);
 
@@ -102,11 +101,6 @@ int evaluate(struct NNet *network, struct Matrix *input, struct Matrix *output);
 
 int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *output);
 
-/*  
- * Uses sgemm to calculate the output
- * 0.0000218 sec for one run with one core
-*/
-int forward_prop(struct NNet *network, struct Matrix *input, struct Matrix *output);
 
 void forward_prop_conv(struct NNet *network, struct Matrix *input, struct Matrix *output);
 
