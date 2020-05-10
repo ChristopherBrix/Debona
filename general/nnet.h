@@ -67,27 +67,32 @@ struct SymInterval
 };
 
 
-void sym_fc_layer(struct SymInterval *sInterval, struct SymInterval *new_sInterval, struct NNet *nnet, int layer, int err_row);
+void sym_fc_layer(struct NNet *nnet, int layer, int err_row);
 
 
 void sym_conv_layer(struct SymInterval *sInterval, struct SymInterval *new_sInterval, struct NNet *nnet, int layer, int err_row);
+
+void get_equations(struct NNet *nnet, int layer, float *equation_low,
+    float *equation_up);
 
 void relu_bound(struct NNet *nnet, 
                 struct Interval *input, int i, int layer, int err_row, 
                 float *low, float *up, int ignore);
 
-int relax_relu(struct NNet *nnet, struct SymInterval *sym_interval,
+int relax_relu(struct NNet *nnet, 
     float lower_bound, float upper_bound,
     float up_lower_bound, float up_upper_bound, struct Interval *input, int i, int layer,
     int *err_row, int *wrong_node_length, int *wcnt, bool ignore_invalid_output);
 
-int sym_relu_layer(struct SymInterval *new_sInterval, struct Interval *input, struct Interval *output,
+int sym_relu_layer(struct Interval *input, struct Interval *output,
                     struct NNet *nnet, int R[][nnet->maxLayerSize],
                     int layer, int *err_row,
                     int *wrong_nodes, int * wrong_node_length, int *node_cnt);
 
 //Functions Implemented
 struct NNet *load_conv_network(const char *filename, int img);
+
+struct NNet *duplicate_conv_network(struct NNet *orig_nnet);
 
 void load_inputs(int img, int inputSize, float *input);
 
@@ -181,5 +186,4 @@ int forward_prop_interval_equation_linear_try(struct NNet *network, struct Inter
 void forward_prop_interval_equation_linear_conv(struct NNet *network, struct Interval *input,
                                      struct Interval *output, float *grad,
                                      int *wrong_nodes, int *wrong_node_length,
-                                     int *full_wrong_node_length,
-                                     float *equation_conv, float *equation_conv_err, int *err_row_conv);
+                                     int *full_wrong_node_length);

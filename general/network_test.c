@@ -205,20 +205,10 @@ int main( int argc, char *argv[]){
         int wrong_node_length = 0;
         int full_wrong_node_length = 0;
         
-        ERR_NODE = 5000;
-        // the equation of last convolutional layer 
-        float *equation_conv_low = (float*)malloc(sizeof(float) *\
-                                (inputSize+1)*maxLayerSize);
-        float *equation_conv_up = (float*)malloc(sizeof(float) *\
-                                (inputSize+1)*maxLayerSize);
-
-        int err_row_conv = 0;
-
         forward_prop_interval_equation_linear_conv(nnet, &input_interval,\
                              &output_interval,\
                              grad, wrong_nodes_map, &wrong_node_length,\
-                             &full_wrong_node_length,\
-                             equation_conv_low, equation_conv_up, &err_row_conv);
+                             &full_wrong_node_length);
 
         printf("One shot approximation:\n");
         printf("upper_matrix:");
@@ -276,13 +266,6 @@ int main( int argc, char *argv[]){
                     "test the LP. \n");
                 exit(1);
             }
-            if(CHECK_ADV_MODE){
-                printf("Check Adv Mode (CHECK_ADV_MODE)\n");
-                for (int n=0;n<full_wrong_node_length;n++){
-                    wrong_nodes_map[n] = wrong_nodes_map[err_row_conv+n];
-                }
-                wrong_node_length = full_wrong_node_length;
-            }
             else{
                 printf("Regular Mode (No CHECK_ADV_MODE)\n");
             }
@@ -295,8 +278,6 @@ int main( int argc, char *argv[]){
             is_overlap = split_interval_conv_lp(nnet, &input_interval,\
                                 output_map,\
                                 grad, wrong_nodes_map, &wrong_node_length, sigs,\
-                                equation_conv_low, equation_conv_up,\
-                                err_row_conv,\
                                 lp, &rule_num, depth);
         }
 
@@ -333,8 +314,6 @@ int main( int argc, char *argv[]){
         printf("time: %f \n\n", time_spent);
         destroy_conv_network(nnet);
 
-        free(equation_conv_low);
-        free(equation_conv_up);
         delete_lp(lp);
 
     }

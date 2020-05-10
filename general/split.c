@@ -215,9 +215,6 @@ void *direct_run_check_conv_lp_thread(void *args){
                      actual_args->output_map,
                      actual_args->grad,
                      actual_args->sigs,\
-                     actual_args->equation_conv_low,\
-                     actual_args->equation_conv_up,\
-                     actual_args->err_row_conv,\
                      actual_args->target,\
                      actual_args->lp, actual_args->rule_num, actual_args->depth);
     return NULL;
@@ -283,20 +280,28 @@ int min(float a, float b){
 }
 
 
-int sym_relu_lp(struct SymInterval *new_sInterval,
-                    struct Interval *input,
+int sym_relu_lp(struct Interval *input,
                     struct NNet *nnet,
                     int layer, int *err_row,
                     int *wrong_nodes_map, 
                     int*wrong_node_length, int *node_cnt,
                     int target, int *sigs,
                     lprec *lp, int *rule_num){
-
-
-    int inputSize = nnet->inputSize;
     
     //record the number of wrong nodes
     int wcnt = 0;
+
+    int inputSize = nnet->inputSize;
+    int maxLayerSize = nnet->maxLayerSize;
+    float *equation_low = (float*)malloc(sizeof(float) *\
+        (inputSize+1)*maxLayerSize);
+    memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+    float *equation_up = (float*)malloc(sizeof(float) *\
+        (inputSize+1)*maxLayerSize);
+    memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+
+    get_equations(nnet, layer, equation_low, equation_up);
+
 
     for (int i=0; i < nnet->layerSizes[layer+1]; i++)
     {
@@ -312,13 +317,13 @@ int sym_relu_lp(struct SymInterval *new_sInterval,
 
         if(*node_cnt == target){
             if(sigs[target]==1){
-                set_node_constraints(lp, (*new_sInterval->matrix_low).data,\
+                set_node_constraints(lp, equation_low,\
                         i*(inputSize+1), rule_num, 1, inputSize);
                 //set_node_constraints(lp, (*new_sInterval->matrix_up).data,\
                 //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
             else{
-                set_node_constraints(lp, (*new_sInterval->matrix_up).data,\
+                set_node_constraints(lp, equation_up,\
                         i*(inputSize+1), rule_num, 0, inputSize);
                 //set_node_constraints(lp, (*new_sInterval->matrix_low).data,\
                 //        i*(inputSize+1), rule_num, sigs[target], inputSize);
@@ -379,13 +384,13 @@ int sym_relu_lp(struct SymInterval *new_sInterval,
 
             
             
-        int action = relax_relu(nnet, new_sInterval, low_tempVal_lower, low_tempVal_upper,
+        int action = relax_relu(nnet, low_tempVal_lower, low_tempVal_upper,
             up_tempVal_lower, up_tempVal_upper, input, i, layer,
             err_row, wrong_node_length, &wcnt, true);
 
-        float tempVal_upper=0.0, tempVal_lower=0.0;
-        relu_bound(nnet, input, i, layer, *err_row,\
-                    &tempVal_lower, &tempVal_upper, 0);
+        //float tempVal_upper=0.0, tempVal_lower=0.0;
+        //relu_bound(nnet, input, i, layer, *err_row,\
+        //            &tempVal_lower, &tempVal_upper, 0);
 
         //printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
 
@@ -397,6 +402,9 @@ int sym_relu_lp(struct SymInterval *new_sInterval,
         *node_cnt += 1;
     }
 
+    free(equation_low);
+    free(equation_up);
+
     return wcnt;
 }
 
@@ -404,9 +412,7 @@ int sym_relu_lp(struct SymInterval *new_sInterval,
 bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                          struct Interval *input, bool *output_map,
                          int *wrong_nodes_map, int *wrong_node_length,
-                         int *sigs, float *equation_conv,
-                         float *equation_conv_low, float equation_conv_up,
-                         int target, lprec *lp, int *rule_num)
+                         int *sigs, int target, lprec *lp, int *rule_num)
 {
     int node_cnt=0;
     bool need_to_split = false;
@@ -416,58 +422,12 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
     int outputSize   = nnet->outputSize;
     int maxLayerSize   = nnet->maxLayerSize;
 
-    // equation is the temp equation for each layer
-    float *equation_low = (float*)malloc(sizeof(float) *\
-                            (inputSize+1)*maxLayerSize);
-    memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-    float *new_equation_low = (float*)malloc(sizeof(float) *\
-                            (inputSize+1)*maxLayerSize);
-    memset(new_equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-    float *equation_up = (float*)malloc(sizeof(float) *\
-                            (inputSize+1)*maxLayerSize);
-    memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-    float *new_equation_up = (float*)malloc(sizeof(float) *\
-                            (inputSize+1)*maxLayerSize);
-    memset(new_equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-
-
-    struct Matrix equation_matrix_low = {
-                (float*)equation_low, inputSize+1, inputSize
-            };
-    struct Matrix equation_matrix_up = {
-                (float*)equation_up, inputSize+1, inputSize
-            };
-    struct Matrix new_equation_matrix_low = {
-                (float*)new_equation_low, inputSize+1, inputSize
-            };
-    struct Matrix new_equation_matrix_up = {
-                (float*)new_equation_up, inputSize+1, inputSize
-            };
-
-    struct SymInterval sInterval = {
-                &equation_matrix_low,
-                &equation_matrix_up
-            };
-    struct SymInterval new_sInterval = {
-                &new_equation_matrix_low,
-                &new_equation_matrix_up
-            };
-
-    
-    for (int i=0; i < nnet->inputSize; i++)
-    {
-        equation_low[i*(inputSize+1)+i] = 1;
-        equation_up[i*(inputSize+1)+i] = 1;
-    }    
-
     //err_row is the number that is wrong before current layer
     int err_row=0;
     for (int layer = 0; layer<numLayers; layer++)
     {
         //printf("sig:%d, layer:%d\n",sig, layer );
         
-        memset(new_equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-        memset(new_equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
         
         if (CHECK_ADV_MODE){
             printf("Not implemented! \n");
@@ -475,23 +435,34 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
         else{
             if(nnet->layerTypes[layer] == 0){
                 //printf("fc layer");
-                sym_fc_layer(&sInterval, &new_sInterval, nnet, layer, err_row);
+                //sym_fc_layer(&sInterval, &new_sInterval, nnet, layer, err_row);
             }
             else{
+                printf("Conv not implemented \n");
+                exit(1);
                 //printf("conv layer\n");
-                sym_conv_layer(&sInterval, &new_sInterval, nnet, layer, err_row);
+                //sym_conv_layer(&sInterval, &new_sInterval, nnet, layer, err_row);
             }
         }
         
         if(layer<(numLayers-1)){
             // printf("relu layer\n");
-            sym_relu_lp(&new_sInterval, input, nnet, layer,\
+            sym_relu_lp(input, nnet, layer,\
                         &err_row, wrong_nodes_map, wrong_node_length, &node_cnt,\
                         target, sigs, lp, rule_num);
         }
         else{
+            int inputSize = nnet->inputSize;
+            int maxLayerSize = nnet->maxLayerSize;
+            float *equation_low = (float*)malloc(sizeof(float) *\
+                (inputSize+1)*maxLayerSize);
+            memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+            float *equation_up = (float*)malloc(sizeof(float) *\
+                (inputSize+1)*maxLayerSize);
+            memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
 
-            //printf("last layer\n");
+            get_equations(nnet, layer, equation_low, equation_up);
+
             for (int i=0; i < nnet->layerSizes[layer+1]; i++){
 
                 if(NEED_PRINT){
@@ -507,11 +478,9 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                 if(i!=nnet->target){
                     float upper_err=0, lower_err=0;
                     for(int k=0;k<inputSize+1;k++){
-                        new_equation_up[k+i*(inputSize+1)] -=\
-                                new_equation_low[k+nnet->target*(inputSize+1)]; 
+                        equation_up[k+i*(inputSize+1)] -=\
+                                equation_low[k+nnet->target*(inputSize+1)]; 
                     }
-
-                    new_equation_up[inputSize+i*(inputSize+1)] += upper_err;
 
                     
                     //gettimeofday(&start, NULL);
@@ -522,7 +491,7 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                     float o[outputSize];
                     memset(o, 0, sizeof(float)*outputSize);
                     if(output_map[i]){
-                        int search = set_output_constraints(lp, new_equation_up,
+                        int search = set_output_constraints(lp, equation_up,
                             i*(inputSize+1), rule_num, inputSize, MAX, &upper,
                             input_prev);
                         if(search == 1){
@@ -536,8 +505,6 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                             if(adv_found){
                                 free(equation_low);
                                 free(equation_up);
-                                free(new_equation_low);
-                                free(new_equation_up);
                                 return 0;
                             }
                         }
@@ -557,17 +524,10 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 
                 node_cnt++;
             }
+            free(equation_low);
+            free(equation_up);
         }
     
-        //printf("\n");
-        memcpy(equation_low, new_equation_low, sizeof(float)*(inputSize+1)*maxLayerSize);
-        memcpy(equation_up, new_equation_up, sizeof(float)*(inputSize+1)*maxLayerSize);
-        equation_matrix_low.row = new_equation_matrix_low.row;
-        equation_matrix_up.row = new_equation_matrix_up.row;
-        equation_matrix_low.col = new_equation_matrix_low.col;
-        equation_matrix_up.col = new_equation_matrix_up.col;
-        //err_row = *wrong_node_length;
-
         if(err_row >= ERR_NODE) {
             printf("err_row = %d > %d \n", err_row, ERR_NODE);
             exit(1);
@@ -576,18 +536,14 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 
     //printf("sig:%d, need_to_split:%d\n",sig, need_to_split );
 
-    free(equation_low);
-    free(equation_up);
-    free(new_equation_low);
-    free(new_equation_up);
+
     return need_to_split;
 }
 
 
 bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
                      bool *output_map, float *grad,
-                     int *sigs, float *equation_conv_low, float *equation_conv_up,
-                     float err_row_conv, int target, lprec *lp,
+                     int *sigs, int target, lprec *lp,
                      int *rule_num, int depth)
 {
     pthread_mutex_lock(&lock);
@@ -612,8 +568,7 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
 
     bool isOverlap = forward_prop_interval_equation_conv_lp(nnet, input,\
                             output_map, wrong_nodes_map, &wrong_node_length, \
-                            sigs, equation_conv_low, equation_conv_up,\
-                            err_row_conv, target, lp, rule_num);
+                            sigs, target, lp, rule_num);
 
     //printf("sig:%d, i:%d\n",sig, isOverlap );
     if(depth<=PROGRESS_DEPTH && !isOverlap){
@@ -635,7 +590,6 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
             printf("depth:%d, sig:%d Need to split!\n\n", depth, sigs[target]);
         isOverlap = split_interval_conv_lp(nnet, input, output_map, grad,
                          wrong_nodes_map, &wrong_node_length, sigs,
-                         equation_conv_low, equation_conv_up, err_row_conv,
                          lp, rule_num, depth);
     }
     else{
@@ -649,8 +603,7 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
 
 bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
                      bool *output_map, float *grad, int *wrong_nodes, int *wrong_node_length,
-                     int *sigs, float *equation_conv_low, float *equation_conv_up,
-                     float err_row_conv, lprec *lp, int *rule_num, int depth)
+                     int *sigs, lprec *lp, int *rule_num, int depth)
 {
     pthread_mutex_lock(&lock);
     if(adv_found){
@@ -721,21 +674,23 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
 
     sigs1[target] = 1;
     sigs2[target] = 0;
+
+    struct NNet *nnet1 = duplicate_conv_network(nnet);
+    struct NNet *nnet2 = duplicate_conv_network(nnet);
+
     pthread_mutex_lock(&lock);
     if(count<MAX_THREAD && !NEED_FOR_ONE_RUN) {
         pthread_mutex_unlock(&lock);
         pthread_t workers1, workers2;
         struct direct_run_check_conv_lp_args args1 = {
-                            nnet, input, output_map1, grad,
+                            nnet1, input, output_map1, grad,
                             sigs1,\
-                            equation_conv_low, equation_conv_up, err_row_conv,\
                             target, lp1, &rule_num1, depth
                         };
 
         struct direct_run_check_conv_lp_args args2 = {
-                            nnet, input, output_map2, grad,
+                            nnet2, input, output_map2, grad,
                             sigs2,\
-                            equation_conv_low, equation_conv_up, err_row_conv,\
                             target, lp2, &rule_num2, depth
                         };
 
@@ -769,21 +724,22 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     }
     else{
         pthread_mutex_unlock(&lock);
-        isOverlap1 = direct_run_check_conv_lp(nnet, input,\
+        isOverlap1 = direct_run_check_conv_lp(nnet1, input,\
                             output_map1, grad,\
                             sigs1,\
-                            equation_conv_low, equation_conv_up, err_row_conv,\
                             target, lp1, &rule_num1, depth);
 
-        isOverlap2 = direct_run_check_conv_lp(nnet, input,\
+        isOverlap2 = direct_run_check_conv_lp(nnet2, input,\
                             output_map2, grad,\
                             sigs2,\
-                            equation_conv_low, equation_conv_up, err_row_conv,\
                             target, lp2, &rule_num2, depth);
     }
 
     delete_lp(lp1);
     delete_lp(lp2);
+
+    destroy_conv_network(nnet1);
+    destroy_conv_network(nnet2);
 
     bool result = isOverlap1 || isOverlap2;
     depth --;
