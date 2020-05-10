@@ -307,6 +307,11 @@ struct NNet *load_conv_network(const char* filename, int img)
 
     free(buffer);
     fclose(fstream);
+    
+    nnet->buffer_equation_low = (float *)malloc(sizeof(float)*((nnet->inputSize)+1)*(nnet->maxLayerSize));
+    nnet->buffer_equation_up = (float *)malloc(sizeof(float)*((nnet->inputSize)+1)*(nnet->maxLayerSize));
+    nnet->buffer_valid = false;
+
     return nnet;
 }
 
@@ -435,6 +440,10 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
     nnet->weights_up = weights_up;
     nnet->bias_low = bias_low;
     nnet->bias_up = bias_up;
+    
+    nnet->buffer_equation_low = (float *)malloc(sizeof(float)*((nnet->inputSize)+1)*(nnet->maxLayerSize));
+    nnet->buffer_equation_up = (float *)malloc(sizeof(float)*((nnet->inputSize)+1)*(nnet->maxLayerSize));
+    nnet->buffer_valid = false;
 
     return nnet;
 }
@@ -489,6 +498,8 @@ void destroy_conv_network(struct NNet *nnet)
         free(nnet->layerSizes);
         free(nnet->layerTypes);
         free(nnet->matrix);
+        free(nnet->buffer_equation_low);
+        free(nnet->buffer_equation_up);
         free(nnet);
     }
 }
@@ -1056,9 +1067,17 @@ void backward_prop_conv(struct NNet *nnet, float *grad,
     }
 }
 
+
 void get_equations(struct NNet *nnet, int layer, float *equation_low, float *equation_up) {
     int inputSize    = nnet->inputSize;
     int maxLayerSize   = nnet->maxLayerSize;
+
+
+    if(nnet->buffer_valid) {
+        memcpy(equation_low, nnet->buffer_equation_low, sizeof(float)*(inputSize+1)*maxLayerSize);
+        memcpy(equation_up, nnet->buffer_equation_up, sizeof(float)*(inputSize+1)*maxLayerSize);
+        return;
+    }
 
     memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
     memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
@@ -1178,6 +1197,11 @@ void get_equations(struct NNet *nnet, int layer, float *equation_low, float *equ
         free(equation_up_pos);
         free(equation_up_neg);
     }
+
+
+    memcpy(nnet->buffer_equation_low, equation_low, sizeof(float)*(inputSize+1)*maxLayerSize);
+    memcpy(nnet->buffer_equation_up, equation_up, sizeof(float)*(inputSize+1)*maxLayerSize);
+    nnet->buffer_valid = true;
 
     //printf("Final returned upper equations: \n");
     //for(int j = 0; j<maxLayerSize; j++) {
@@ -1428,6 +1452,8 @@ int sym_relu_layer(struct Interval *input,
         }
         (*node_cnt) += 1;  
     }
+
+    nnet->buffer_valid = false;
 
     return wcnt;
 }

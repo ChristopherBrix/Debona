@@ -57,6 +57,11 @@ struct NNet
     int *feature_range;
     int feature_range_length;
     int split_feature;
+
+
+    float *buffer_equation_low;
+    float *buffer_equation_up;
+    bool buffer_valid;
 };
 
 

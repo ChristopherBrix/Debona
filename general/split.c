@@ -405,6 +405,8 @@ int sym_relu_lp(struct Interval *input,
     free(equation_low);
     free(equation_up);
 
+    nnet->buffer_valid = false;
+
     return wcnt;
 }
 
