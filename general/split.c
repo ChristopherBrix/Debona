@@ -325,13 +325,13 @@ int sym_relu_lp(struct Interval *input,
             if(sigs[target]==1){
                 set_node_constraints(lp, &(equation_low[i*(inputSize)]), bias_low[i], \
                         0, rule_num, 1, inputSize);
-                //set_node_constraints(lp, (*new_sInterval->matrix_up).data,\
+                //set_node_constraints(lp, (*new_sInterval->matrix_up).data,
                 //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
             else{
                 set_node_constraints(lp, &(equation_up[i*(inputSize)]), bias_up[i], \
                         0, rule_num, 0, inputSize);
-                //set_node_constraints(lp, (*new_sInterval->matrix_low).data,\
+                //set_node_constraints(lp, (*new_sInterval->matrix_low).data,
                 //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
         }
@@ -395,7 +395,7 @@ int sym_relu_lp(struct Interval *input,
             err_row, wrong_node_length, &wcnt, true);
 
         //float tempVal_upper=0.0, tempVal_lower=0.0;
-        //relu_bound(nnet, input, i, layer, *err_row,\
+        //relu_bound(nnet, input, i, layer, *err_row,
         //            &tempVal_lower, &tempVal_upper, 0);
 
         //printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
@@ -428,9 +428,7 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
     bool need_to_split = false;
 
     int numLayers    = nnet->numLayers;
-    int inputSize    = nnet->inputSize;
     int outputSize   = nnet->outputSize;
-    int maxLayerSize   = nnet->maxLayerSize;
 
     //err_row is the number that is wrong before current layer
     int err_row=0;
@@ -483,16 +481,15 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 
                 if(NEED_PRINT){
                     float tempVal_upper=0.0, tempVal_lower=0.0;
-                    relu_bound(nnet, input, i, layer, err_row,\
+                    relu_bound(nnet, input, i, layer, err_row,
                             &tempVal_lower, &tempVal_upper, 0);
-                    //printf("target:%d, sig:%d, node:%d, l:%f, u:%f\n",\
+                    //printf("target:%d, sig:%d, node:%d, l:%f, u:%f\n",
                     //            target, sigs[target], i, tempVal_lower, tempVal_upper);
                     printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
                 }
                 
 
                 if(i!=nnet->target){
-                    float upper_err=0, lower_err=0;
                     for(int k=0;k<inputSize;k++){
                         equation_up[k+i*(inputSize)] -=\
                                 equation_low[k+nnet->target*(inputSize)]; 

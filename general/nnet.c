@@ -1345,7 +1345,6 @@ int relax_relu(struct NNet *nnet,
     float low_lower_bound, float low_upper_bound,
     float up_lower_bound, float up_upper_bound, struct Interval *input, int i, int layer,
     int *err_row, int *wrong_node_length, int *wcnt, bool ignore_invalid_output) {
-    int inputSize = nnet->inputSize;
 
     if(low_lower_bound > low_upper_bound || up_lower_bound > up_upper_bound) {
         printf("Invalid bounds \n");
@@ -1415,10 +1414,10 @@ int relax_relu(struct NNet *nnet,
         result = 10 + actions;
     }
 
-    float low_tempVal_upper = 0;
-    float low_tempVal_lower = 0;
-    float up_tempVal_upper = 0;
-    float up_tempVal_lower = 0;
+    //float low_tempVal_upper = 0;
+    //float low_tempVal_lower = 0;
+    //float up_tempVal_upper = 0;
+    //float up_tempVal_lower = 0;
 
     //relu_bound(nnet, input, i, layer, *err_row, &up_tempVal_lower, &up_tempVal_upper, 2);
     //relu_bound(nnet, input, i, layer, *err_row, &low_tempVal_lower, &low_tempVal_upper, 1);
@@ -1426,7 +1425,7 @@ int relax_relu(struct NNet *nnet,
 
     //if(!ignore_invalid_output && up_tempVal_lower < 0) {
     //    if(up_tempVal_lower < 0) {
-    //        printf("Lower bound of upper bound must never be less " \
+    //        printf("Lower bound of upper bound must never be less "
     //            "than zero, but is %.20f \n", up_tempVal_lower);
     //        exit(1);
     //    }
@@ -1449,8 +1448,6 @@ int sym_relu_layer(struct Interval *input,
                     int *wrong_node_length,
                     int *node_cnt)
 {
-    int inputSize = nnet->inputSize;
-    
     //record the number of wrong nodes
     int wcnt = 0;
 
@@ -1487,7 +1484,7 @@ int sym_relu_layer(struct Interval *input,
             }
 
             tempVal_upper=0.0, tempVal_lower=0.0;
-            //relu_bound(nnet, input, i, layer, *err_row,\
+            //relu_bound(nnet, input, i, layer, *err_row,
             //            &tempVal_lower, &tempVal_upper, 0);
 
             //printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
@@ -1513,7 +1510,6 @@ void forward_prop_interval_equation_linear_conv(struct NNet *nnet,
     int node_cnt=0;
 
     int numLayers    = nnet->numLayers;
-    int inputSize    = nnet->inputSize;
     int maxLayerSize   = nnet->maxLayerSize;
     
     int R[numLayers][maxLayerSize];
@@ -1554,9 +1550,9 @@ void forward_prop_interval_equation_linear_conv(struct NNet *nnet,
 //
             //if(layer == 0){
 //
-            //    memcpy(equation_conv_low, new_equation_low,\
+            //    memcpy(equation_conv_low, new_equation_low,
             //            sizeof(float)*(inputSize+1)*maxLayerSize);
-            //    memcpy(equation_conv_up, new_equation_up,\
+            //    memcpy(equation_conv_up, new_equation_up,
             //            sizeof(float)*(inputSize+1)*maxLayerSize);
             //    *err_row_conv = err_row;
 //

@@ -141,7 +141,6 @@ int main( int argc, char *argv[]){
         int numLayers    = nnet->numLayers;
         int inputSize    = nnet->inputSize;
         int outputSize   = nnet->outputSize;
-        int maxLayerSize = nnet->maxLayerSize;
 
         float u[inputSize+1], l[inputSize+1], input_prev[inputSize];
         struct Matrix input_prev_matrix = {input_prev, 1, inputSize};
