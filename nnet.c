@@ -1366,6 +1366,13 @@ void relu_bound(struct NNet *nnet,
         }
 
 
+        if(ignore == 1) {
+            weight_up = weight_low;
+        }
+        else if(ignore == 2) {
+            weight_low = weight_up;
+        }
+
         if(weight_low>=0){
             tempVal_lower +=\
                 weight_low * input->lower_matrix.data[k]-needed_outward_round;
@@ -1385,8 +1392,22 @@ void relu_bound(struct NNet *nnet,
         } 
     }
 
-    tempVal_lower += nnet->cache_bias_low[i];
-    tempVal_upper += nnet->cache_bias_up[i];
+    if(ignore == 0) {
+        tempVal_lower += nnet->cache_bias_low[i];
+        tempVal_upper += nnet->cache_bias_up[i];
+    }
+    else if(ignore == 1) {
+        tempVal_lower += nnet->cache_bias_low[i];
+        tempVal_upper += nnet->cache_bias_low[i];
+    }
+    else if(ignore == 2) {
+        tempVal_lower += nnet->cache_bias_up[i];
+        tempVal_upper += nnet->cache_bias_up[i];
+    }
+    else {
+        printf("Invalid ignore parameter \n");
+        exit(1);
+    }
 
     *up = tempVal_upper;
     *low = tempVal_lower;
@@ -1454,15 +1475,44 @@ int relax_relu(struct NNet *nnet,
             nnet->bias_low[layer].data[i] *= scaling;
             nnet->bias_up[layer].data[i] *= scaling;
             
+
             nnet->bias_up[layer].data[i] -= \
                 low_lower_bound*scaling;
         }
-        
+
+        if(actions == 2) {
+            *wcnt -= 1;
+            *wrong_node_length -= 1;
+        }
+
+
+        if(low_upper_bound <= 0) {
+            for(int k=0; k < nnet->weights_low[layer].row; k++){
+                nnet->weights_low[layer].data[k + i*nnet->layerSizes[layer]] = 0;
+            }
+            nnet->bias_low[layer].data[i] = 0;
+
+            actions++;
+            low_upper_bound=99999999; // prevent double execution (see below)
+        }  
+//
+        if(low_upper_bound <= -low_lower_bound) {
+            for(int k=0; k < nnet->weights_low[layer].row; k++){
+                nnet->weights_low[layer].data[k + i*nnet->layerSizes[layer]] = 0;
+            }
+            nnet->bias_low[layer].data[i] = 0;
+
+            actions++;
+            low_upper_bound=99999999; // prevent double execution (see below)
+        }  
+
         if(actions == 0) {
             printf("Why was no action applied? %f - %f, %f - %f \n",
             low_lower_bound, low_upper_bound, up_lower_bound, up_upper_bound);
             exit(1);
         }
+
+
         
         result = 10 + actions;
     }
