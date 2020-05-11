@@ -1268,6 +1268,14 @@ void relu_bound(struct NNet *nnet,
         float weight_low = equation_low[k+i*(inputSize+1)];
         float weight_up = equation_up[k+i*(inputSize+1)];
 
+        if(ignore == 1) {
+            weight_up = weight_low;
+        }
+        else if(ignore == 2) {
+            weight_low = weight_up;
+        }
+
+
         if(weight_low>=0){
             tempVal_lower +=\
                 weight_low * input->lower_matrix.data[k]-needed_outward_round;
