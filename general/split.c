@@ -294,13 +294,19 @@ int sym_relu_lp(struct Interval *input,
     int inputSize = nnet->inputSize;
     int maxLayerSize = nnet->maxLayerSize;
     float *equation_low = (float*)malloc(sizeof(float) *\
-        (inputSize+1)*maxLayerSize);
-    memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+        (inputSize)*maxLayerSize);
+    memset(equation_low, 0, sizeof(float)*(inputSize)*maxLayerSize);
     float *equation_up = (float*)malloc(sizeof(float) *\
-        (inputSize+1)*maxLayerSize);
-    memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+        (inputSize)*maxLayerSize);
+    memset(equation_up, 0, sizeof(float)*(inputSize)*maxLayerSize);
+    float *bias_low = (float*)malloc(sizeof(float) *\
+        (1)*maxLayerSize);
+    memset(bias_low, 0, sizeof(float)*(1)*maxLayerSize);
+    float *bias_up = (float*)malloc(sizeof(float) *\
+        (1)*maxLayerSize);
+    memset(bias_up, 0, sizeof(float)*(1)*maxLayerSize);
 
-    get_equations(nnet, layer, equation_low, equation_up);
+    get_equations(nnet, layer, equation_low, equation_up, bias_low, bias_up);
 
 
     for (int i=0; i < nnet->layerSizes[layer+1]; i++)
@@ -317,14 +323,14 @@ int sym_relu_lp(struct Interval *input,
 
         if(*node_cnt == target){
             if(sigs[target]==1){
-                set_node_constraints(lp, equation_low,\
-                        i*(inputSize+1), rule_num, 1, inputSize);
+                set_node_constraints(lp, &(equation_low[i*(inputSize)]), bias_low[i], \
+                        0, rule_num, 1, inputSize);
                 //set_node_constraints(lp, (*new_sInterval->matrix_up).data,\
                 //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
             else{
-                set_node_constraints(lp, equation_up,\
-                        i*(inputSize+1), rule_num, 0, inputSize);
+                set_node_constraints(lp, &(equation_up[i*(inputSize)]), bias_up[i], \
+                        0, rule_num, 0, inputSize);
                 //set_node_constraints(lp, (*new_sInterval->matrix_low).data,\
                 //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
@@ -404,6 +410,8 @@ int sym_relu_lp(struct Interval *input,
 
     free(equation_low);
     free(equation_up);
+    free(bias_low);
+    free(bias_up);
 
     nnet->buffer_valid = false;
 
@@ -457,13 +465,19 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
             int inputSize = nnet->inputSize;
             int maxLayerSize = nnet->maxLayerSize;
             float *equation_low = (float*)malloc(sizeof(float) *\
-                (inputSize+1)*maxLayerSize);
-            memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+                (inputSize)*maxLayerSize);
+            memset(equation_low, 0, sizeof(float)*(inputSize)*maxLayerSize);
             float *equation_up = (float*)malloc(sizeof(float) *\
-                (inputSize+1)*maxLayerSize);
-            memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+                (inputSize)*maxLayerSize);
+            memset(equation_up, 0, sizeof(float)*(inputSize)*maxLayerSize);
+            float *bias_low = (float*)malloc(sizeof(float) *\
+                (1)*maxLayerSize);
+            memset(bias_low, 0, sizeof(float)*(1)*maxLayerSize);
+            float *bias_up = (float*)malloc(sizeof(float) *\
+                (1)*maxLayerSize);
+            memset(bias_up, 0, sizeof(float)*(1)*maxLayerSize);
 
-            get_equations(nnet, layer, equation_low, equation_up);
+            get_equations(nnet, layer, equation_low, equation_up, bias_low, bias_up);
 
             for (int i=0; i < nnet->layerSizes[layer+1]; i++){
 
@@ -479,10 +493,11 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 
                 if(i!=nnet->target){
                     float upper_err=0, lower_err=0;
-                    for(int k=0;k<inputSize+1;k++){
-                        equation_up[k+i*(inputSize+1)] -=\
-                                equation_low[k+nnet->target*(inputSize+1)]; 
+                    for(int k=0;k<inputSize;k++){
+                        equation_up[k+i*(inputSize)] -=\
+                                equation_low[k+nnet->target*(inputSize)]; 
                     }
+                    bias_up[i] -= bias_low[nnet->target];
 
                     
                     //gettimeofday(&start, NULL);
@@ -493,8 +508,8 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                     float o[outputSize];
                     memset(o, 0, sizeof(float)*outputSize);
                     if(output_map[i]){
-                        int search = set_output_constraints(lp, equation_up,
-                            i*(inputSize+1), rule_num, inputSize, MAX, &upper,
+                        int search = set_output_constraints(lp, &(equation_up[i*(inputSize)]), bias_up[i],
+                            0, rule_num, inputSize, MAX, &upper,
                             input_prev);
                         if(search == 1){
                             need_to_split = true;
@@ -507,6 +522,8 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                             if(adv_found){
                                 free(equation_low);
                                 free(equation_up);
+                                free(bias_low);
+                                free(bias_up);
                                 return 0;
                             }
                         }
@@ -528,6 +545,8 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
             }
             free(equation_low);
             free(equation_up);
+            free(bias_low);
+            free(bias_up);
         }
     
         if(err_row >= ERR_NODE) {

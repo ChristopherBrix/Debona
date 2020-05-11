@@ -308,8 +308,10 @@ struct NNet *load_conv_network(const char* filename, int img)
     free(buffer);
     fclose(fstream);
     
-    nnet->buffer_equation_low = (float *)malloc(sizeof(float)*((nnet->inputSize)+1)*(nnet->maxLayerSize));
-    nnet->buffer_equation_up = (float *)malloc(sizeof(float)*((nnet->inputSize)+1)*(nnet->maxLayerSize));
+    nnet->buffer_equation_low = (float *)malloc(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
+    nnet->buffer_equation_up = (float *)malloc(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
+    nnet->buffer_bias_low = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
+    nnet->buffer_bias_up = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
     nnet->buffer_valid = false;
 
     return nnet;
@@ -441,8 +443,10 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
     nnet->bias_low = bias_low;
     nnet->bias_up = bias_up;
     
-    nnet->buffer_equation_low = (float *)malloc(sizeof(float)*((nnet->inputSize)+1)*(nnet->maxLayerSize));
-    nnet->buffer_equation_up = (float *)malloc(sizeof(float)*((nnet->inputSize)+1)*(nnet->maxLayerSize));
+    nnet->buffer_equation_low = (float *)malloc(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
+    nnet->buffer_equation_up = (float *)malloc(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
+    nnet->buffer_bias_low = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
+    nnet->buffer_bias_up = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
     nnet->buffer_valid = false;
 
     return nnet;
@@ -500,6 +504,8 @@ void destroy_conv_network(struct NNet *nnet)
         free(nnet->matrix);
         free(nnet->buffer_equation_low);
         free(nnet->buffer_equation_up);
+        free(nnet->buffer_bias_low);
+        free(nnet->buffer_bias_up);
         free(nnet);
     }
 }
@@ -571,7 +577,7 @@ void set_input_constraints(struct Interval *input,
 }
 
 
-void set_node_constraints(lprec *lp, float *equation,
+void set_node_constraints(lprec *lp, float *equation, float bias,
                         int start, int *rule_num,
                         int sig, int inputSize)
 {
@@ -583,17 +589,17 @@ void set_node_constraints(lprec *lp, float *equation,
         row[j] = equation[start+j-1];
     }
     if(sig==1){
-        add_constraintex(lp, 1, row, NULL, GE, -equation[inputSize+start]);
+        add_constraintex(lp, 1, row, NULL, GE, -bias);
     }
     else{
-        add_constraintex(lp, 1, row, NULL, LE, -equation[inputSize+start]);
+        add_constraintex(lp, 1, row, NULL, LE, -bias);
     }
     *rule_num += 1;
     set_add_rowmode(lp, FALSE);
 }
 
 
-float set_output_constraints(lprec *lp, float *equation,
+float set_output_constraints(lprec *lp, float *equation, float bias,
                 int start_place, int *rule_num, int inputSize,
                 int is_max, float *output, float *input_prev)
 {
@@ -606,12 +612,12 @@ float set_output_constraints(lprec *lp, float *equation,
     }
     if(is_max){
         add_constraintex(lp, 1, row, NULL, GE,\
-                    -equation[inputSize+start_place]);
+                    -bias);
         set_maxim(lp);
     }
     else{
         add_constraintex(lp, 1, row, NULL, LE,\
-                    -equation[inputSize+start_place]);
+                    -bias);
         set_minim(lp);
     }
     *rule_num += 1;
@@ -1068,39 +1074,55 @@ void backward_prop_conv(struct NNet *nnet, float *grad,
 }
 
 
-void get_equations(struct NNet *nnet, int layer, float *equation_low, float *equation_up) {
+void get_equations(struct NNet *nnet, int layer, float *equation_low, float *equation_up,
+    float *bias_low, float * bias_up) {
     int inputSize    = nnet->inputSize;
     int maxLayerSize   = nnet->maxLayerSize;
 
 
     if(nnet->buffer_valid) {
-        memcpy(equation_low, nnet->buffer_equation_low, sizeof(float)*(inputSize+1)*maxLayerSize);
-        memcpy(equation_up, nnet->buffer_equation_up, sizeof(float)*(inputSize+1)*maxLayerSize);
+        memcpy(equation_low, nnet->buffer_equation_low, sizeof(float)*(inputSize)*maxLayerSize);
+        memcpy(equation_up, nnet->buffer_equation_up, sizeof(float)*(inputSize)*maxLayerSize);
+        memcpy(bias_low, nnet->buffer_bias_low, sizeof(float)*(1)*maxLayerSize);
+        memcpy(bias_up, nnet->buffer_bias_up, sizeof(float)*(1)*maxLayerSize);
         return;
     }
 
-    memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-    memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+    memset(equation_low, 0, sizeof(float)*(inputSize)*maxLayerSize);
+    memset(equation_up, 0, sizeof(float)*(inputSize)*maxLayerSize);
+    memset(bias_low, 0, sizeof(float)*(1)*maxLayerSize);
+    memset(bias_up, 0, sizeof(float)*(1)*maxLayerSize);
 
     if(nnet->layerSizes[0] != inputSize) {
         printf("Error B: %d != %d \n", nnet->layerSizes[layer], inputSize);
         exit(1);
     }
 
-    //memcpy(equation_low, nnet->weights_low[layer].data, nnet->layerSizes[layer] * nnet->layerSizes[layer + 1]);
-    //memcpy(equation_up, nnet->weights_up[layer].data, nnet->layerSizes[layer] * nnet->layerSizes[layer + 1]);
 
-    for(int j = 0; j < nnet->layerSizes[layer + 1]; j++) {
-        for(int i = 0; i < nnet->layerSizes[layer]; i++) {
-            equation_low[i + j * (nnet->layerSizes[layer]+1)] = nnet->weights_low[layer].data[i + j * nnet->layerSizes[layer]];
-            equation_up[i + j * (nnet->layerSizes[layer]+1)] = nnet->weights_up[layer].data[i + j * nnet->layerSizes[layer]];
-        }
+    memcpy(equation_low, 
+        nnet->weights_low[layer].data,
+        sizeof(float) * nnet->layerSizes[layer + 1] * nnet->layerSizes[layer]);
+    memcpy(equation_up, 
+        nnet->weights_up[layer].data,
+        sizeof(float) * nnet->layerSizes[layer + 1] * nnet->layerSizes[layer]);
+    memcpy(bias_low, nnet->bias_low[layer].data, sizeof(float) * nnet->layerSizes[layer + 1]);
+    memcpy(bias_up, nnet->bias_up[layer].data, sizeof(float) * nnet->layerSizes[layer + 1]);
 
-        equation_low[nnet->layerSizes[layer] + j * (nnet->layerSizes[layer]+1)] = nnet->bias_low[layer].data[j];
-        equation_up[nnet->layerSizes[layer] + j * (nnet->layerSizes[layer]+1)] = nnet->bias_up[layer].data[j];
-    }
+    float *equation_low_pos = (float*)malloc(sizeof(float) *\
+                            (inputSize)*maxLayerSize);
+    float *equation_low_neg = (float*)malloc(sizeof(float) *\
+                            (inputSize)*maxLayerSize);
+    float *equation_up_pos = (float*)malloc(sizeof(float) *\
+                            (inputSize)*maxLayerSize);
+    float *equation_up_neg = (float*)malloc(sizeof(float) *\
+                            (inputSize)*maxLayerSize);
 
     for(int l=layer; l>0; l--) {
+        memset(equation_low_pos, 0, sizeof(float)*(inputSize)*maxLayerSize);
+        memset(equation_low_neg, 0, sizeof(float)*(inputSize)*maxLayerSize);
+        memset(equation_up_pos, 0, sizeof(float)*(inputSize)*maxLayerSize);
+        memset(equation_up_neg, 0, sizeof(float)*(inputSize)*maxLayerSize);
+
         //printf("Intermediate upper equations: \n");
         //for(int j = 0; j<maxLayerSize; j++) {
         //    printf("%d: ", j);
@@ -1121,22 +1143,10 @@ void get_equations(struct NNet *nnet, int layer, float *equation_low, float *equ
         //printf("\n");
 
 
-        float *equation_low_pos = (float*)malloc(sizeof(float) *\
-                                (inputSize+1)*maxLayerSize);
-        memset(equation_low_pos, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-        float *equation_low_neg = (float*)malloc(sizeof(float) *\
-                                (inputSize+1)*maxLayerSize);
-        memset(equation_low_neg, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-        float *equation_up_pos = (float*)malloc(sizeof(float) *\
-                                (inputSize+1)*maxLayerSize);
-        memset(equation_up_pos, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-        float *equation_up_neg = (float*)malloc(sizeof(float) *\
-                                (inputSize+1)*maxLayerSize);
-        memset(equation_up_neg, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
 
         int n = 0;
         for(int j = 0; j < nnet->layerSizes[layer+1]; j++) {
-            for(int i = 0; i < nnet->layerSizes[l] + 1; i++) {
+            for(int i = 0; i < nnet->layerSizes[l]; i++) {
                 if(equation_low[n] > 0) {
                     equation_low_pos[n] = equation_low[n];
                 }
@@ -1155,52 +1165,68 @@ void get_equations(struct NNet *nnet, int layer, float *equation_low, float *equ
             }
         }
 
-        memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
-        memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+        memset(equation_low, 0, sizeof(float)*(inputSize)*maxLayerSize);
+        memset(equation_up, 0, sizeof(float)*(inputSize)*maxLayerSize);
+
+        struct Matrix equation_low_pos_matrix = {
+            equation_low_pos, nnet->layerSizes[layer+1], nnet->layerSizes[l]
+        };
+        struct Matrix equation_low_neg_matrix = {
+            equation_low_neg, nnet->layerSizes[layer+1], nnet->layerSizes[l]
+        };
+        struct Matrix equation_up_pos_matrix = {
+            equation_up_pos, nnet->layerSizes[layer+1], nnet->layerSizes[l]
+        };
+        struct Matrix equation_up_neg_matrix = {
+            equation_up_neg, nnet->layerSizes[layer+1], nnet->layerSizes[l]
+        };
 
 
-        for(int node = 0; node < nnet->layerSizes[layer+1]; node++) {
-            for(int cur = 0; cur < nnet->layerSizes[l]; cur++) {
-                for(int prev = 0; prev < nnet->layerSizes[l-1]; prev++) {
-                    int old_weight_index = prev + cur * nnet->layerSizes[l-1];
-                    
-                    nnet->weights_low[l-1].data[old_weight_index] += 0;
-                    
-                    equation_low[prev + node * (nnet->layerSizes[l-1] + 1)] += 
-                        equation_low_pos[cur + node * (nnet->layerSizes[l] + 1)] * nnet->weights_low[l-1].data[old_weight_index] +
-                        equation_low_neg[cur + node * (nnet->layerSizes[l] + 1)] * nnet->weights_up[l-1].data[old_weight_index];
-                    
-                    equation_up[prev + node * (nnet->layerSizes[l-1] + 1)] += 
-                        equation_up_pos[cur + node * (nnet->layerSizes[l] + 1)] * nnet->weights_up[l-1].data[old_weight_index] +
-                        equation_up_neg[cur + node * (nnet->layerSizes[l] + 1)] * nnet->weights_low[l-1].data[old_weight_index];
-                }
-
-                equation_low[nnet->layerSizes[l-1] + node * (nnet->layerSizes[l-1] + 1)] += 
-                    equation_low_pos[cur + node * (nnet->layerSizes[l] + 1)] * nnet->bias_low[l-1].data[cur] + 
-                    equation_low_neg[cur + node * (nnet->layerSizes[l] + 1)] * nnet->bias_up[l-1].data[cur];
-                equation_up[nnet->layerSizes[l-1] + node * (nnet->layerSizes[l-1] + 1)] += 
-                    equation_up_pos[cur + node * (nnet->layerSizes[l] + 1)] * nnet->bias_up[l-1].data[cur] + 
-                    equation_up_neg[cur + node * (nnet->layerSizes[l] + 1)] * nnet->bias_low[l-1].data[cur];
-            }
-            equation_low[nnet->layerSizes[l-1] + node * (nnet->layerSizes[l-1] + 1)] += 
-                equation_low_pos[nnet->layerSizes[l] + node * (nnet->layerSizes[layer]+1)] +
-                equation_low_neg[nnet->layerSizes[l] + node * (nnet->layerSizes[layer]+1)];
-            equation_up[nnet->layerSizes[l-1] + node * (nnet->layerSizes[l-1] + 1)] += 
-                equation_up_pos[nnet->layerSizes[l] + node * (nnet->layerSizes[layer]+1)] +
-                equation_up_neg[nnet->layerSizes[l] + node * (nnet->layerSizes[layer]+1)];
-        }
+        struct Matrix equation_low_matrix = {
+            equation_low, nnet->layerSizes[layer+1], nnet->layerSizes[l-1]
+        };
+        struct Matrix equation_up_matrix = {
+            equation_up, nnet->layerSizes[layer+1], nnet->layerSizes[l-1]
+        };
 
 
+        matmul(&(nnet->weights_low[l-1]), &equation_low_pos_matrix, &equation_low_matrix);
+        matmul_with_bias(&(nnet->weights_up[l-1]), &equation_low_neg_matrix, &equation_low_matrix);
 
-        free(equation_low_pos);
-        free(equation_low_neg);
-        free(equation_up_pos);
-        free(equation_up_neg);
+        matmul(&(nnet->weights_up[l-1]), &equation_up_pos_matrix, &equation_up_matrix);
+        matmul_with_bias(&(nnet->weights_low[l-1]), &equation_up_neg_matrix, &equation_up_matrix);
+
+        
+
+        struct Matrix bias_low_matrix = {
+            bias_low, nnet->layerSizes[layer+1], 1
+        };
+        struct Matrix bias_up_matrix = {
+            bias_up, nnet->layerSizes[layer+1], 1
+        };
+
+
+        matmul_with_bias(&(nnet->bias_low[l-1]), &equation_low_pos_matrix, &bias_low_matrix);
+        matmul_with_bias(&(nnet->bias_up[l-1]), &equation_low_neg_matrix, &bias_low_matrix);
+
+        matmul_with_bias(&(nnet->bias_up[l-1]), &equation_up_pos_matrix, &bias_up_matrix);
+        matmul_with_bias(&(nnet->bias_low[l-1]), &equation_up_neg_matrix, &bias_up_matrix);
+
+        
+
+
+
     }
 
+    free(equation_low_pos);
+    free(equation_low_neg);
+    free(equation_up_pos);
+    free(equation_up_neg);
 
-    memcpy(nnet->buffer_equation_low, equation_low, sizeof(float)*(inputSize+1)*maxLayerSize);
-    memcpy(nnet->buffer_equation_up, equation_up, sizeof(float)*(inputSize+1)*maxLayerSize);
+    memcpy(nnet->buffer_equation_low, equation_low, sizeof(float)*(inputSize)*maxLayerSize);
+    memcpy(nnet->buffer_equation_up, equation_up, sizeof(float)*(inputSize)*maxLayerSize);
+    memcpy(nnet->buffer_bias_low, bias_low, sizeof(float)*(1)*maxLayerSize);
+    memcpy(nnet->buffer_bias_up, bias_up, sizeof(float)*(1)*maxLayerSize);
     nnet->buffer_valid = true;
 
     //printf("Final returned upper equations: \n");
@@ -1247,13 +1273,19 @@ void relu_bound(struct NNet *nnet,
     int inputSize    = nnet->inputSize;
     int maxLayerSize   = nnet->maxLayerSize;
     float *equation_low = (float*)malloc(sizeof(float) *\
-        (inputSize+1)*maxLayerSize);
-    memset(equation_low, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+        (inputSize)*maxLayerSize);
+    memset(equation_low, 0, sizeof(float)*(inputSize)*maxLayerSize);
     float *equation_up = (float*)malloc(sizeof(float) *\
-        (inputSize+1)*maxLayerSize);
-    memset(equation_up, 0, sizeof(float)*(inputSize+1)*maxLayerSize);
+        (inputSize)*maxLayerSize);
+    memset(equation_up, 0, sizeof(float)*(inputSize)*maxLayerSize);
+    float *bias_low = (float*)malloc(sizeof(float) *\
+        (1)*maxLayerSize);
+    memset(bias_low, 0, sizeof(float)*(1)*maxLayerSize);
+    float *bias_up = (float*)malloc(sizeof(float) *\
+        (1)*maxLayerSize);
+    memset(bias_up, 0, sizeof(float)*(1)*maxLayerSize);
 
-    get_equations(nnet, layer, equation_low, equation_up);
+    get_equations(nnet, layer, equation_low, equation_up, bias_low, bias_up);
 
     
     //ignore = 0;
@@ -1264,9 +1296,9 @@ void relu_bound(struct NNet *nnet,
         needed_outward_round = OUTWARD_ROUND;
     }
     
-    for(int k=0;k<inputSize+1;k++){
-        float weight_low = equation_low[k+i*(inputSize+1)];
-        float weight_up = equation_up[k+i*(inputSize+1)];
+    for(int k=0;k<inputSize;k++){
+        float weight_low = equation_low[k+i*(inputSize)];
+        float weight_up = equation_up[k+i*(inputSize)];
 
         if(ignore == 1) {
             weight_up = weight_low;
@@ -1295,6 +1327,9 @@ void relu_bound(struct NNet *nnet,
         } 
     }
 
+    tempVal_lower += bias_low[i];
+    tempVal_upper += bias_up[i];
+
     *up = tempVal_upper;
     *low = tempVal_lower;
 
@@ -1302,6 +1337,8 @@ void relu_bound(struct NNet *nnet,
 
     free(equation_low);
     free(equation_up);
+    free(bias_low);
+    free(bias_up);
 }
 
 int relax_relu(struct NNet *nnet, 

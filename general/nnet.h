@@ -61,6 +61,8 @@ struct NNet
 
     float *buffer_equation_low;
     float *buffer_equation_up;
+    float *buffer_bias_low;
+    float *buffer_bias_up;
     bool buffer_valid;
 };
 
@@ -78,7 +80,7 @@ void sym_fc_layer(struct NNet *nnet, int layer, int err_row);
 void sym_conv_layer(struct SymInterval *sInterval, struct SymInterval *new_sInterval, struct NNet *nnet, int layer, int err_row);
 
 void get_equations(struct NNet *nnet, int layer, float *equation_low,
-    float *equation_up);
+    float *equation_up, float *bias_low, float * bias_up);
 
 void relu_bound(struct NNet *nnet, 
                 struct Interval *input, int i, int layer, int err_row, 
@@ -152,9 +154,9 @@ void sort_layers(int numLayers, int*layerSizes, int wrong_node_length, int*wrong
 
 void set_input_constraints(struct Interval *input, lprec *lp, int *rule_num, int inputSize);
 
-void set_node_constraints(lprec *lp, float *equation, int start, int *rule_num, int sig, int inputSize);
+void set_node_constraints(lprec *lp, float *equation, float bias, int start, int *rule_num, int sig, int inputSize);
 
-float set_output_constraints(lprec *lp, float *equation, int start, int *rule_num, int inputSize, int is_max, float *output, float *input_prev);
+float set_output_constraints(lprec *lp, float *equation, float bias, int start, int *rule_num, int inputSize, int is_max, float *output, float *input_prev);
 
 float set_wrong_node_constraints(lprec *lp, float *equation, int start, int *rule_num, int inputSize, int is_max, float *output);
 
