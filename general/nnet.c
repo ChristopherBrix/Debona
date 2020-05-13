@@ -334,6 +334,8 @@ struct NNet *load_conv_network(const char* filename, int img)
     nnet->cache_bias_up = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
     nnet->cache_valid = false;
 
+    nnet->is_duplicate = false;
+
     return nnet;
 }
 
@@ -347,28 +349,17 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
     nnet->maxLayerSize = orig_nnet->maxLayerSize;
 
     //Allocate space for and read values of the array members of the network
-    nnet->layerSizes = (int*)malloc(sizeof(int)*(nnet->numLayers+1 + 1));
-    memcpy(nnet->layerSizes, orig_nnet->layerSizes, sizeof(int) * (nnet->numLayers + 1 + 1));
+    nnet->layerSizes = orig_nnet->layerSizes;
 
     //Load Min and Max values of inputs
     nnet->min = MIN_PIXEL;
     nnet->max = MAX_PIXEL;
     
-    nnet->layerTypes = (int*)malloc(sizeof(int)*nnet->numLayers);
+    nnet->layerTypes = orig_nnet->layerTypes;
     nnet->convLayersNum = orig_nnet->convLayersNum;
-    memcpy(nnet->layerTypes, orig_nnet->layerTypes, sizeof(int) * nnet->numLayers);
 
     //initial convlayer parameters
-    nnet->convLayer = (int**)malloc(sizeof(int *)*nnet->convLayersNum);
-    for(int i = 0; i < nnet->convLayersNum; i++){
-        nnet->convLayer[i] = (int*)malloc(sizeof(int)*5);
-    }
-
-    for(int cl=0;cl<nnet->convLayersNum;cl++){
-        for (int i = 0; i<5; i++){
-            nnet->convLayer[cl][i] = orig_nnet->convLayer[cl][i];
-        }
-    }
+    nnet->convLayer = orig_nnet->convLayer;
 
     //Allocate space for matrix of Neural Network
     //
@@ -380,44 +371,12 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
     //Note that the bias array will have only one number per neuron, so
     //    its fourth dimension will always be one
     //
-    nnet->matrix = (float****)malloc(sizeof(float *)*(nnet->numLayers));
-    for (int layer = 0; layer<nnet->numLayers; layer++){
-        if(nnet->layerTypes[layer]==0){
-            nnet->matrix[layer] = (float***)malloc(sizeof(float *)*2);
-            nnet->matrix[layer][0] = (float**)malloc(sizeof(float *)*nnet->layerSizes[layer+1]);
-            nnet->matrix[layer][1] = (float**)malloc(sizeof(float *)*nnet->layerSizes[layer+1]);
-            for (int row = 0; row < nnet->layerSizes[layer+1]; row++){
-                nnet->matrix[layer][0][row] = (float*)malloc(sizeof(float)*nnet->layerSizes[layer]);
-                memcpy(nnet->matrix[layer][0][row], orig_nnet->matrix[layer][0][row], sizeof(float)*nnet->layerSizes[layer]);
-                nnet->matrix[layer][1][row] = (float*)malloc(sizeof(float));
-                memcpy(nnet->matrix[layer][1][row], orig_nnet->matrix[layer][1][row], sizeof(float));
-            }
-        }
-    }
+    nnet->matrix = orig_nnet->matrix;
 
-    nnet->conv_matrix = (float****)malloc(sizeof(float *)*nnet->convLayersNum);
-    for(int layer = 0; layer < nnet->convLayersNum; layer++){
-        int out_channel = nnet->convLayer[layer][0];
-        int in_channel = nnet->convLayer[layer][1];
-        int kernel_size = nnet->convLayer[layer][2]*nnet->convLayer[layer][2];
-        nnet->conv_matrix[layer]=(float***)malloc(sizeof(float*)*out_channel);
-        for(int oc=0;oc<out_channel;oc++){
-            nnet->conv_matrix[layer][oc] = (float**)malloc(sizeof(float*)*in_channel);
-            for(int ic=0;ic<in_channel;ic++){
-                nnet->conv_matrix[layer][oc][ic] = (float*)malloc(sizeof(float)*kernel_size);
-                memcpy(nnet->conv_matrix[layer][oc][ic], orig_nnet->conv_matrix[layer][oc][ic], sizeof(float) * kernel_size);
-            }
+    nnet->conv_matrix = orig_nnet->conv_matrix;
 
-        }
-    }
+    nnet->conv_bias = orig_nnet->conv_bias;
 
-    nnet->conv_bias = (float**)malloc(sizeof(float*)*nnet->convLayersNum);
-    for(int layer = 0; layer < nnet->convLayersNum; layer++){
-        int out_channel = nnet->convLayer[layer][0];
-        nnet->conv_bias[layer] = (float*)malloc(sizeof(float)*out_channel);
-        memcpy(nnet->conv_bias[layer], orig_nnet->conv_bias[layer], sizeof(float) * out_channel);
-    }
-    
     nnet->target = orig_nnet->target;
 
     // Dont't copy weights and biases from orig_net! Those may have been
@@ -489,6 +448,8 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
     nnet->cache_bias_up = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
     nnet->cache_valid = false;
 
+    nnet->is_duplicate = true;
+
     return nnet;
 }
 
@@ -502,51 +463,56 @@ void destroy_conv_network(struct NNet *nnet)
         for(i=0; i<nnet->numLayers; i++)
         {
             if(nnet->layerTypes[i]==1) continue;
-            for(row=0;row<nnet->layerSizes[i+1];row++)
-            {
-                //free weight and bias arrays
-                free(nnet->matrix[i][0][row]);
-                free(nnet->matrix[i][1][row]);
+            if(!nnet->is_duplicate) {
+                for(row=0;row<nnet->layerSizes[i+1];row++)
+                {
+                    //free weight and bias arrays
+                    free(nnet->matrix[i][0][row]);
+                    free(nnet->matrix[i][1][row]);
+                }
+                //free pointer to weights and biases
+                free(nnet->matrix[i][0]);
+                free(nnet->matrix[i][1]);
+                free(nnet->matrix[i]);
             }
-            //free pointer to weights and biases
-            free(nnet->matrix[i][0]);
-            free(nnet->matrix[i][1]);
+
             free(nnet->weights_low[i].data);
             free(nnet->weights_up[i].data);
             free(nnet->bias_low[i].data);
             free(nnet->bias_up[i].data);
-            free(nnet->matrix[i]);
         }
         free(nnet->weights_low[nnet->numLayers].data);
         free(nnet->weights_up[nnet->numLayers].data);
         free(nnet->bias_low[nnet->numLayers].data);
         free(nnet->bias_up[nnet->numLayers].data);
 
-        for(i=0;i<nnet->convLayersNum;i++){
-            int in_channel = nnet->convLayer[i][1];
-            int out_channel = nnet->convLayer[i][0];
-            for(int oc=0;oc<out_channel;oc++){
-                for(int ic=0;ic<in_channel;ic++){
-                    free(nnet->conv_matrix[i][oc][ic]);
+        if(!nnet->is_duplicate) {
+            for(i=0;i<nnet->convLayersNum;i++){
+                int in_channel = nnet->convLayer[i][1];
+                int out_channel = nnet->convLayer[i][0];
+                for(int oc=0;oc<out_channel;oc++){
+                    for(int ic=0;ic<in_channel;ic++){
+                        free(nnet->conv_matrix[i][oc][ic]);
+                    }
+                    free(nnet->conv_matrix[i][oc]);
                 }
-                free(nnet->conv_matrix[i][oc]);
+                free(nnet->conv_matrix[i]);
+                free(nnet->conv_bias[i]);
             }
-            free(nnet->conv_matrix[i]);
-            free(nnet->conv_bias[i]);
+            free(nnet->conv_bias);
+            free(nnet->conv_matrix);
+            for(i=0;i<nnet->convLayersNum;i++){
+                free(nnet->convLayer[i]);
+            }
+            free(nnet->convLayer);
+            free(nnet->layerSizes);
+            free(nnet->layerTypes);
+            free(nnet->matrix);
         }
-        free(nnet->conv_bias);
-        free(nnet->conv_matrix);
-        for(i=0;i<nnet->convLayersNum;i++){
-            free(nnet->convLayer[i]);
-        }
-        free(nnet->convLayer);
         free(nnet->weights_low);
         free(nnet->weights_up);
         free(nnet->bias_low);
         free(nnet->bias_up);
-        free(nnet->layerSizes);
-        free(nnet->layerTypes);
-        free(nnet->matrix);
         free(nnet->cache_equation_low);
         free(nnet->cache_equation_up);
         free(nnet->cache_bias_low);

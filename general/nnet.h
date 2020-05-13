@@ -64,6 +64,8 @@ struct NNet
     float *cache_bias_low;
     float *cache_bias_up;
     bool cache_valid;
+
+    bool is_duplicate;
 };
 
 
