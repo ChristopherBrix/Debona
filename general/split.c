@@ -528,13 +528,9 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
                      int *sigs, int target, lprec *lp,
                      int *rule_num, int depth)
 {
-    pthread_mutex_lock(&lock);
     if(adv_found){
-        pthread_mutex_unlock(&lock);
         return false;
     }
-
-    pthread_mutex_unlock(&lock);
 
     if(depth<=3){
         solve(lp);
@@ -554,9 +550,7 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
 
     //printf("sig:%d, i:%d\n",sig, isOverlap );
     if(depth<=PROGRESS_DEPTH && !isOverlap){
-        pthread_mutex_lock(&lock);
-            progress_list[depth-1] += 1;
-        pthread_mutex_unlock(&lock);
+        progress_list[depth-1] += 1;
         fprintf(stderr, " progress: ");
         for(int p=1;p<PROGRESS_DEPTH+1;p++){
             if(p>depth){
@@ -587,20 +581,16 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
                      bool *output_map, float *grad, int *wrong_nodes, int *wrong_node_length,
                      int *sigs, lprec *lp, int *rule_num, int depth)
 {
-    pthread_mutex_lock(&lock);
     if(adv_found){
-        pthread_mutex_unlock(&lock);
         return false;
     }
     
     if(depth>=MAX_DEPTH){
         printf("Maximum depth reached\n");
         analysis_uncertain = true;
-        pthread_mutex_unlock(&lock);
         return false;
     }
 
-    pthread_mutex_unlock(&lock);
 
     if(depth==0){
         memset(progress_list, 0, PROGRESS_DEPTH*sizeof(int));
@@ -660,9 +650,7 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     struct NNet *nnet1 = duplicate_conv_network(nnet);
     struct NNet *nnet2 = duplicate_conv_network(nnet);
 
-    pthread_mutex_lock(&lock);
     if(count<MAX_THREAD && !NEED_FOR_ONE_RUN) {
-        pthread_mutex_unlock(&lock);
         pthread_t workers1, workers2;
         struct direct_run_check_conv_lp_args args1 = {
                             nnet1, input, output_map1, grad,
@@ -679,16 +667,12 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         pthread_create(&workers1, NULL,\
                 direct_run_check_conv_lp_thread, &args1);
         pthread_mutex_lock(&lock);
-        count++;
-        thread_tot_cnt++;
+        count += 2;
+        thread_tot_cnt += 2;
         pthread_mutex_unlock(&lock);
         //printf ( "pid1: %ld start %d \n", syscall(SYS_gettid), count);
         pthread_create(&workers2, NULL,\
                 direct_run_check_conv_lp_thread, &args2);
-        pthread_mutex_lock(&lock);
-        count++;
-        thread_tot_cnt++;
-        pthread_mutex_unlock(&lock);
         //printf ( "pid2: %ld start %d \n", syscall(SYS_gettid), count);
         pthread_join(workers1, NULL);
         pthread_mutex_lock(&lock);
@@ -705,7 +689,6 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
 
     }
     else{
-        pthread_mutex_unlock(&lock);
         isOverlap1 = direct_run_check_conv_lp(nnet1, input,\
                             output_map1, grad,\
                             sigs1,\
@@ -727,15 +710,13 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     depth --;
 
     if(!result && depth<=PROGRESS_DEPTH){
-        pthread_mutex_lock(&lock);
-            progress_list[depth-1] += 1;
+        progress_list[depth-1] += 1;
         fprintf(stderr, " progress: ");
         for(int p=1;p<PROGRESS_DEPTH+1;p++){
             fprintf(stderr, " %d/%d ",\
                     progress_list[p-1], total_progress[p-1]);
         }
         fprintf(stderr, "\n");
-        pthread_mutex_unlock(&lock);
     }
 
     return result;
