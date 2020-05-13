@@ -59,11 +59,11 @@ struct NNet
     int split_feature;
 
 
-    float *buffer_equation_low;
-    float *buffer_equation_up;
-    float *buffer_bias_low;
-    float *buffer_bias_up;
-    bool buffer_valid;
+    float *cache_equation_low;
+    float *cache_equation_up;
+    float *cache_bias_low;
+    float *cache_bias_up;
+    bool cache_valid;
 };
 
 
@@ -79,8 +79,7 @@ void sym_fc_layer(struct NNet *nnet, int layer, int err_row);
 
 void sym_conv_layer(struct SymInterval *sInterval, struct SymInterval *new_sInterval, struct NNet *nnet, int layer, int err_row);
 
-void get_equations(struct NNet *nnet, int layer, float *equation_low,
-    float *equation_up, float *bias_low, float * bias_up);
+void update_equations(struct NNet *nnet, int layer);
 
 void relu_bound(struct NNet *nnet, 
                 struct Interval *input, int i, int layer, int err_row, 
