@@ -464,20 +464,29 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
             int maxLayerSize = nnet->maxLayerSize;
             float *equation_low = (float*)malloc(sizeof(float) *\
                 (inputSize)*maxLayerSize);
-            memset(equation_low, 0, sizeof(float)*(inputSize)*maxLayerSize);
             float *equation_up = (float*)malloc(sizeof(float) *\
                 (inputSize)*maxLayerSize);
-            memset(equation_up, 0, sizeof(float)*(inputSize)*maxLayerSize);
             float *bias_low = (float*)malloc(sizeof(float) *\
                 (1)*maxLayerSize);
-            memset(bias_low, 0, sizeof(float)*(1)*maxLayerSize);
             float *bias_up = (float*)malloc(sizeof(float) *\
                 (1)*maxLayerSize);
-            memset(bias_up, 0, sizeof(float)*(1)*maxLayerSize);
 
-            get_equations(nnet, layer, equation_low, equation_up, bias_low, bias_up);
+            //get_equations(nnet, layer, equation_low, equation_up, bias_low, bias_up);
 
             for (int i=0; i < nnet->layerSizes[layer+1]; i++){
+                memset(equation_low, 0, sizeof(float)*(inputSize)*maxLayerSize);
+                memset(equation_up, 0, sizeof(float)*(inputSize)*maxLayerSize);
+                memset(bias_low, 0, sizeof(float)*(1)*maxLayerSize);
+                memset(bias_up, 0, sizeof(float)*(1)*maxLayerSize);
+
+                if(nnet->weights_up[nnet->numLayers].col != 1) {
+                    printf("Too many last nodes \n");
+                    exit(1);
+                }
+                memset(nnet->weights_up[nnet->numLayers].data, 0, sizeof(float)*nnet->weights_up[nnet->numLayers].col*nnet->weights_up[nnet->numLayers].row);
+                nnet->weights_up[nnet->numLayers].data[i] = 1;
+                nnet->weights_up[nnet->numLayers].data[nnet->target] = -1;
+                nnet->buffer_valid = false;
 
                 if(NEED_PRINT){
                     float tempVal_upper=0.0, tempVal_lower=0.0;
@@ -490,11 +499,11 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                 
 
                 if(i!=nnet->target){
-                    for(int k=0;k<inputSize;k++){
-                        equation_up[k+i*(inputSize)] -=\
-                                equation_low[k+nnet->target*(inputSize)]; 
-                    }
-                    bias_up[i] -= bias_low[nnet->target];
+                    //for(int k=0;k<inputSize;k++){
+                    //    equation_up[k+i*(inputSize)] -=\
+                    //            equation_low[k+nnet->target*(inputSize)]; 
+                    //}
+                    //bias_up[i] -= bias_low[nnet->target];
 
                     
                     //gettimeofday(&start, NULL);
@@ -505,7 +514,9 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                     float o[outputSize];
                     memset(o, 0, sizeof(float)*outputSize);
                     if(output_map[i]){
-                        int search = set_output_constraints(lp, &(equation_up[i*(inputSize)]), bias_up[i],
+                        get_equations(nnet, layer+1, equation_low, equation_up, bias_low, bias_up);
+
+                        int search = set_output_constraints(lp, &(equation_up[0*(inputSize)]), bias_up[0],
                             0, rule_num, inputSize, MAX, &upper,
                             input_prev);
                         if(search == 1){

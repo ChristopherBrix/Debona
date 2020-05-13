@@ -58,7 +58,7 @@ struct NNet *load_conv_network(const char* filename, int img)
     nnet->maxLayerSize = atoi(strtok(NULL,",\n"));
 
     //Allocate space for and read values of the array members of the network
-    nnet->layerSizes = (int*)malloc(sizeof(int)*(nnet->numLayers+1));
+    nnet->layerSizes = (int*)malloc(sizeof(int)*(nnet->numLayers+1+1));
     line = fgets(buffer,bufferSize,fstream);
     record = strtok(line,",\n");
     for (int i = 0; i<((nnet->numLayers)+1); i++)
@@ -66,6 +66,7 @@ struct NNet *load_conv_network(const char* filename, int img)
         nnet->layerSizes[i] = atoi(record);
         record = strtok(NULL,",\n");
     }
+    nnet->layerSizes[nnet->numLayers + 1] = 1;
     //Load Min and Max values of inputs
     nnet->min = MIN_PIXEL;
     nnet->max = MAX_PIXEL;
@@ -264,10 +265,10 @@ struct NNet *load_conv_network(const char* filename, int img)
         }
     }
 
-    struct Matrix *weights_low = malloc(nnet->numLayers*sizeof(struct Matrix));
-    struct Matrix *weights_up = malloc(nnet->numLayers*sizeof(struct Matrix));
-    struct Matrix *bias_low = malloc(nnet->numLayers*sizeof(struct Matrix));
-    struct Matrix *bias_up = malloc(nnet->numLayers*sizeof(struct Matrix));
+    struct Matrix *weights_low = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *weights_up = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *bias_low = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *bias_up = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
 
     for(int layer=0;layer<nnet->numLayers;layer++){
         if(nnet->layerTypes[layer]==1) continue;
@@ -300,6 +301,25 @@ struct NNet *load_conv_network(const char* filename, int img)
             bias_up[layer].data[i] = nnet->matrix[layer][1][i][0];
         }
     } 
+    weights_low[nnet->numLayers].row = nnet->layerSizes[nnet->numLayers];
+    weights_low[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    weights_up[nnet->numLayers].row = nnet->layerSizes[nnet->numLayers];
+    weights_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    weights_low[nnet->numLayers].data =\
+        (float*)malloc(sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
+    memset(weights_low[nnet->numLayers].data, 0, sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
+    weights_up[nnet->numLayers].data =\
+        (float*)malloc(sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
+    memset(weights_up[nnet->numLayers].data, 0, sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
+    bias_low[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    bias_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    bias_low[nnet->numLayers].row = (float)1;
+    bias_up[nnet->numLayers].row = (float)1;
+    bias_low[nnet->numLayers].data = (float*)malloc(sizeof(float)*bias_low[nnet->numLayers].col);
+    memset(bias_low[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
+    bias_up[nnet->numLayers].data = (float*)malloc(sizeof(float)*bias_up[nnet->numLayers].col);
+    memset(bias_up[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
+
     nnet->weights_low = weights_low;
     nnet->weights_up = weights_up;
     nnet->bias_low = bias_low;
@@ -327,8 +347,8 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
     nnet->maxLayerSize = orig_nnet->maxLayerSize;
 
     //Allocate space for and read values of the array members of the network
-    nnet->layerSizes = (int*)malloc(sizeof(int)*(nnet->numLayers+1));
-    memcpy(nnet->layerSizes, orig_nnet->layerSizes, sizeof(int) * (nnet->numLayers + 1));
+    nnet->layerSizes = (int*)malloc(sizeof(int)*(nnet->numLayers+1 + 1));
+    memcpy(nnet->layerSizes, orig_nnet->layerSizes, sizeof(int) * (nnet->numLayers + 1 + 1));
 
     //Load Min and Max values of inputs
     nnet->min = MIN_PIXEL;
@@ -402,10 +422,10 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
 
     // Dont't copy weights and biases from orig_net! Those may have been
     // modified by ReLU relax operations
-    struct Matrix *weights_low = malloc(nnet->numLayers*sizeof(struct Matrix));
-    struct Matrix *weights_up = malloc(nnet->numLayers*sizeof(struct Matrix));
-    struct Matrix *bias_low = malloc(nnet->numLayers*sizeof(struct Matrix));
-    struct Matrix *bias_up = malloc(nnet->numLayers*sizeof(struct Matrix));
+    struct Matrix *weights_low = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *weights_up = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *bias_low = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *bias_up = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
 
     for(int layer=0;layer<nnet->numLayers;layer++){
         if(nnet->layerTypes[layer]==1) continue;
@@ -438,6 +458,26 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
             bias_up[layer].data[i] = nnet->matrix[layer][1][i][0];
         }
     } 
+    weights_low[nnet->numLayers].row = nnet->layerSizes[nnet->numLayers];
+    weights_low[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    weights_up[nnet->numLayers].row = nnet->layerSizes[nnet->numLayers];
+    weights_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    weights_low[nnet->numLayers].data =\
+        (float*)malloc(sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
+    memset(weights_low[nnet->numLayers].data, 0, sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
+    weights_up[nnet->numLayers].data =\
+        (float*)malloc(sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
+    memset(weights_up[nnet->numLayers].data, 0, sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
+    bias_low[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    bias_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    bias_low[nnet->numLayers].row = (float)1;
+    bias_up[nnet->numLayers].row = (float)1;
+    bias_low[nnet->numLayers].data = (float*)malloc(sizeof(float)*bias_low[nnet->numLayers].col);
+    memset(bias_low[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
+    bias_up[nnet->numLayers].data = (float*)malloc(sizeof(float)*bias_up[nnet->numLayers].col);
+    memset(bias_up[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
+
+
     nnet->weights_low = weights_low;
     nnet->weights_up = weights_up;
     nnet->bias_low = bias_low;
@@ -477,6 +517,11 @@ void destroy_conv_network(struct NNet *nnet)
             free(nnet->bias_up[i].data);
             free(nnet->matrix[i]);
         }
+        free(nnet->weights_low[nnet->numLayers].data);
+        free(nnet->weights_up[nnet->numLayers].data);
+        free(nnet->bias_low[nnet->numLayers].data);
+        free(nnet->bias_up[nnet->numLayers].data);
+
         for(i=0;i<nnet->convLayersNum;i++){
             int in_channel = nnet->convLayer[i][1];
             int out_channel = nnet->convLayer[i][0];
