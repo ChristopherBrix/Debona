@@ -1467,14 +1467,14 @@ int relax_relu(struct NNet *nnet,
             *wcnt += 1;
             *err_row += 1;
         }
-        if((up_lower_bound < 0 && up_upper_bound > 0)) {
+        if((low_lower_bound < 0 && up_upper_bound > 0)) {
             actions++;
             
             *wrong_node_length += 1;
             *wcnt += 1;
             *err_row += 1;
 
-            float scaling = up_upper_bound / (up_upper_bound - up_lower_bound);
+            float scaling = up_upper_bound / (up_upper_bound - low_lower_bound);
             for(int k=0; k < nnet->weights_up[layer].row; k++){
                 nnet->weights_up[layer].data[k + i*nnet->layerSizes[layer]] *= scaling;
             }
@@ -1482,7 +1482,7 @@ int relax_relu(struct NNet *nnet,
             
 
             nnet->bias_up[layer].data[i] -= \
-                up_lower_bound*scaling;
+                low_lower_bound*scaling;
         }
 
         if(actions == 2) {
