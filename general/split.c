@@ -594,6 +594,10 @@ int direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
             if(NEED_PRINT) 
                 printf("depth:%d, sig:%d, UNSAT, great!\n\n", depth, sigs[target]);
     }
+    
+    // Undo last split
+    del_constraint(lp, *rule_num);
+    *rule_num -= 1; 
 
     if(increment_global_counter) {
         pthread_mutex_lock(&lock);
@@ -673,7 +677,7 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
 
     if(count<MAX_THREAD && !NEED_FOR_ONE_RUN) {
         lprec *lp1, *lp2;
-        lp1 = copy_lp(lp);
+        lp1 = lp;
         lp2 = copy_lp(lp);
         reset_conv_network(nnet);
         struct NNet *nnet1 = nnet;
@@ -712,13 +716,12 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         count--;
         pthread_mutex_unlock(&lock);
 
-        delete_lp(lp1);
         delete_lp(lp2);
         destroy_conv_network(nnet2);
     }
     else{
         lprec *lp1, *lp2;
-        lp1 = copy_lp(lp);
+        lp1 = lp;
         reset_conv_network(nnet);
         struct NNet *nnet1 = nnet;
         sub_analyses += direct_run_check_conv_lp(nnet1, input,\
@@ -726,15 +729,13 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
                             sigs1,\
                             target, lp1, &rule_num1, depth, start_time, false);
 
-        delete_lp(lp1);
-        lp2 = copy_lp(lp);
+        lp2 = lp;
         reset_conv_network(nnet);
         struct NNet *nnet2 = nnet;
         sub_analyses += direct_run_check_conv_lp(nnet2, input,\
                             output_map2, grad,\
                             sigs2,\
                             target, lp2, &rule_num2, depth, start_time, false);
-        delete_lp(lp2);
     }
 
     depth --;
