@@ -134,6 +134,7 @@ int main( int argc, char *argv[]){
 
         adv_found = false;
         analysis_uncertain = false;
+        analyses_count = 0;
         printf("start loading network\n");
         struct NNet* nnet = load_conv_network(FULL_NET_PATH, img);
         printf("done loading network\n");
@@ -274,10 +275,9 @@ int main( int argc, char *argv[]){
 
             // split
             int depth = 0;
-            is_overlap = split_interval_conv_lp(nnet, &input_interval,\
-                                output_map,\
-                                grad, wrong_nodes_map, &wrong_node_length, sigs,\
-                                lp, &rule_num, depth, start);
+            split_interval_conv_lp(nnet, &input_interval, output_map, grad,
+                wrong_nodes_map, &wrong_node_length, sigs, lp, &rule_num, depth,
+                start, true);
         }
 
         //write_LP(lp, stdout);
@@ -288,7 +288,7 @@ int main( int argc, char *argv[]){
                 (float)(finish.tv_usec-start.tv_usec)) / 1000000;
         total_time_spent += time_spent;
 
-        if(!is_overlap && !adv_found && !analysis_uncertain){
+        if(!adv_found && !analysis_uncertain){
             if (CHECK_ADV_MODE){
                 printf("no adv found\n");
                 can_t_prove_list[no_prove] = img;
@@ -310,6 +310,9 @@ int main( int argc, char *argv[]){
 
         printf("Current analysis result: %d adv, %d non-adv, %d undetermined \n",
           adv_num, non_adv, no_prove);
+        if(!analysis_uncertain) {
+            printf("Performed sub-analyses: %d \n", analyses_count);
+        }
         printf("time: %f \n\n", time_spent);
         destroy_conv_network(nnet);
 

@@ -31,6 +31,8 @@ int MAX_DEPTH = 30;
 int progress_list[PROGRESS_DEPTH];
 int total_progress[PROGRESS_DEPTH];
 
+int analyses_count = 0;
+
 
  /*
   * You need to customize your own checking function.
@@ -221,7 +223,8 @@ void *direct_run_check_conv_lp_thread(void *args){
         actual_args->lp, 
         actual_args->rule_num,
         actual_args->depth,
-        actual_args->start_time);
+        actual_args->start_time,
+        actual_args->increment_global_counter);
     return NULL;
 }
 
@@ -528,13 +531,13 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 }
 
 
-bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
-                     bool *output_map, float *grad,
-                     int *sigs, int target, lprec *lp,
-                     int *rule_num, int depth, struct timeval start_time)
+int direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
+    bool *output_map, float *grad, int *sigs, int target, lprec *lp,
+    int *rule_num, int depth, struct timeval start_time,
+    bool increment_global_counter)
 {
     if(adv_found){
-        return false;
+        return 0;
     }
 
     struct timeval current_time;
@@ -545,8 +548,10 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
             printf("Timeout during splits \n");
         }
         analysis_uncertain = true;
-        return false;
+        return 0;
     }
+
+    int sub_analyses = 0;
 
     if(depth<=3){
         solve(lp);
@@ -580,31 +585,39 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
     if(isOverlap && !NEED_FOR_ONE_RUN){
         if(NEED_PRINT)
             printf("depth:%d, sig:%d Need to split!\n\n", depth, sigs[target]);
-        isOverlap = split_interval_conv_lp(nnet, input, output_map, grad,
+        sub_analyses = split_interval_conv_lp(nnet, input, output_map, grad,
                          wrong_nodes_map, &wrong_node_length, sigs,
-                         lp, rule_num, depth, start_time);
+                         lp, rule_num, depth, start_time, false);
     }
     else{
         if(!adv_found)
             if(NEED_PRINT) 
                 printf("depth:%d, sig:%d, UNSAT, great!\n\n", depth, sigs[target]);
     }
-    return isOverlap;
+
+    if(increment_global_counter) {
+        pthread_mutex_lock(&lock);
+        analyses_count += 1 + sub_analyses;
+        pthread_mutex_unlock(&lock);
+    }
+
+    return 1 + sub_analyses;
 }
 
 
-bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
+int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     bool *output_map, float *grad, int *wrong_nodes, int *wrong_node_length,
-    int *sigs, lprec *lp, int *rule_num, int depth, struct timeval start_time)
+    int *sigs, lprec *lp, int *rule_num, int depth, struct timeval start_time,
+    bool increment_global_counter)
 {
     if(adv_found){
-        return false;
+        return 0;
     }
     
     if(depth>=MAX_DEPTH){
         printf("Maximum depth reached\n");
         analysis_uncertain = true;
-        return false;
+        return 0;
     }
 
 
@@ -617,6 +630,8 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
 
     depth ++;
 
+    int sub_analyses = 0;
+
     int outputSize = nnet->outputSize;
 
     sort(grad, *wrong_node_length, wrong_nodes);
@@ -627,12 +642,10 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         pthread_mutex_lock(&lock);
         analysis_uncertain = true;
         pthread_mutex_unlock(&lock);
-        return false;
+        return 0;
     }
     // printf("%d, %d\n", wrong_nodes[0], wrong_nodes[1]);
-    bool isOverlap1 = false;
-    bool isOverlap2 = false;
-
+    
     lprec *lp1, *lp2;
     //write_lp(lp, "model.lp");
     //lp1 = read_LP("model.lp", IMPORTANT, NULL);
@@ -671,13 +684,13 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         struct direct_run_check_conv_lp_args args1 = {
                             nnet1, input, output_map1, grad,
                             sigs1,\
-                            target, lp1, &rule_num1, depth, start_time
+                            target, lp1, &rule_num1, depth, start_time, true
                         };
 
         struct direct_run_check_conv_lp_args args2 = {
                             nnet2, input, output_map2, grad,
                             sigs2,\
-                            target, lp2, &rule_num2, depth, start_time
+                            target, lp2, &rule_num2, depth, start_time, true
                         };
 
         pthread_create(&workers1, NULL,\
@@ -700,20 +713,17 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         count--;
         pthread_mutex_unlock(&lock);
 
-        isOverlap1 = false;
-        isOverlap2 = false;
-
     }
     else{
-        isOverlap1 = direct_run_check_conv_lp(nnet1, input,\
+        sub_analyses += direct_run_check_conv_lp(nnet1, input,\
                             output_map1, grad,\
                             sigs1,\
-                            target, lp1, &rule_num1, depth, start_time);
+                            target, lp1, &rule_num1, depth, start_time, false);
 
-        isOverlap2 = direct_run_check_conv_lp(nnet2, input,\
+        sub_analyses += direct_run_check_conv_lp(nnet2, input,\
                             output_map2, grad,\
                             sigs2,\
-                            target, lp2, &rule_num2, depth, start_time);
+                            target, lp2, &rule_num2, depth, start_time, false);
     }
 
     delete_lp(lp1);
@@ -722,10 +732,9 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     destroy_conv_network(nnet1);
     destroy_conv_network(nnet2);
 
-    bool result = isOverlap1 || isOverlap2;
     depth --;
 
-    if(!result && depth<=PROGRESS_DEPTH){
+    if(depth<=PROGRESS_DEPTH){
         progress_list[depth-1] += 1;
         fprintf(stderr, " progress: ");
         for(int p=1;p<PROGRESS_DEPTH+1;p++){
@@ -735,5 +744,11 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         fprintf(stderr, "\n");
     }
 
-    return result;
+    if(increment_global_counter) {
+        pthread_mutex_lock(&lock);
+        analyses_count += sub_analyses;
+        pthread_mutex_unlock(&lock);
+    }
+
+    return sub_analyses;
 }

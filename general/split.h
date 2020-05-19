@@ -45,6 +45,8 @@ extern int total_progress[PROGRESS_DEPTH];
 pthread_mutex_t lock;
 extern int count;
 
+extern int analyses_count;
+
 
 
 struct direct_run_check_conv_lp_args
@@ -59,6 +61,7 @@ struct direct_run_check_conv_lp_args
 	int *rule_num;
 	int depth;
 	struct timeval start_time;
+	bool increment_global_counter;
 };
 
 
@@ -89,10 +92,12 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 	int *wrong_node_length, int *sigs, int target, lprec *lp,
 	int *rule_num);
 
-bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input, bool *output_map, float *grad,
-                     int *sigs,
-                     int target, lprec *lp, int *rule_num, int depth, struct timeval start_time);
+int direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
+	bool *output_map, float *grad, int *sigs, int target, lprec *lp,
+	int *rule_num, int depth, struct timeval start_time,
+	bool increment_global_counter);
 
-bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input, bool *output_map, float *grad,
-                     int *wrong_nodes, int *wrong_node_length, int *sigs,
-                     lprec *lp, int *rule_num, int depth, struct timeval start_time);
+int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
+	bool *output_map, float *grad, int *wrong_nodes, int *wrong_node_length,
+	int *sigs, lprec *lp, int *rule_num, int depth, struct timeval start_time,
+	bool increment_global_counter);
