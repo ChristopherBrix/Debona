@@ -101,6 +101,7 @@ int sym_relu_layer(struct Interval *input, struct Interval *output,
 struct NNet *load_conv_network(const char *filename, int img);
 
 struct NNet *duplicate_conv_network(struct NNet *orig_nnet);
+struct NNet *reset_conv_network(struct NNet *nnet);
 
 void load_inputs(int img, int inputSize, float *input);
 

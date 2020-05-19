@@ -455,6 +455,60 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
 
 
 
+struct NNet *reset_conv_network(struct NNet *nnet)
+{
+    // Dont't copy weights and biases from orig_net! Those may have been
+    // modified by ReLU relax operations
+    struct Matrix *weights_low = nnet->weights_low;
+    struct Matrix *weights_up = nnet->weights_up;
+    struct Matrix *bias_low = nnet->bias_low;
+    struct Matrix *bias_up = nnet->bias_up;
+
+    for(int layer=0;layer<nnet->numLayers;layer++){
+        if(nnet->layerTypes[layer]==1) continue;
+        weights_low[layer].row = nnet->layerSizes[layer];
+        weights_up[layer].row = nnet->layerSizes[layer];
+        weights_low[layer].col = nnet->layerSizes[layer+1];
+        weights_up[layer].col = nnet->layerSizes[layer+1];
+        
+        int n=0;
+        for(int i=0;i<weights_low[layer].col;i++){
+            for(int j=0;j<weights_low[layer].row;j++){
+                float w = nnet->matrix[layer][0][i][j];
+                weights_low[layer].data[n] = w;
+                weights_up[layer].data[n] = w;
+                n++;
+            }
+        }
+        bias_low[layer].col = nnet->layerSizes[layer+1];
+        bias_up[layer].col = nnet->layerSizes[layer+1];
+        bias_low[layer].row = (float)1;
+        bias_up[layer].row = (float)1;
+        
+        for(int i=0;i<bias_low[layer].col;i++){
+            bias_low[layer].data[i] = nnet->matrix[layer][1][i][0];
+            bias_up[layer].data[i] = nnet->matrix[layer][1][i][0];
+        }
+    } 
+    weights_low[nnet->numLayers].row = nnet->layerSizes[nnet->numLayers];
+    weights_low[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    weights_up[nnet->numLayers].row = nnet->layerSizes[nnet->numLayers];
+    weights_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    memset(weights_low[nnet->numLayers].data, 0, sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
+    memset(weights_up[nnet->numLayers].data, 0, sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
+    bias_low[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    bias_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
+    bias_low[nnet->numLayers].row = (float)1;
+    bias_up[nnet->numLayers].row = (float)1;
+    memset(bias_low[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
+    memset(bias_up[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
+
+
+    nnet->cache_valid = false;
+
+    return nnet;
+}
+
 void destroy_conv_network(struct NNet *nnet)
 {
     int i=0, row=0;

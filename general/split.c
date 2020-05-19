@@ -646,12 +646,6 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     }
     // printf("%d, %d\n", wrong_nodes[0], wrong_nodes[1]);
     
-    lprec *lp1, *lp2;
-    //write_lp(lp, "model.lp");
-    //lp1 = read_LP("model.lp", IMPORTANT, NULL);
-    //lp2 = read_LP("model.lp", IMPORTANT, NULL);
-    lp1 = copy_lp(lp);
-    lp2 = copy_lp(lp);
 
     int rule_num1 = *rule_num;
     int rule_num2 = *rule_num;
@@ -676,10 +670,15 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     sigs1[target] = 1;
     sigs2[target] = 0;
 
-    struct NNet *nnet1 = duplicate_conv_network(nnet);
-    struct NNet *nnet2 = duplicate_conv_network(nnet);
 
     if(count<MAX_THREAD && !NEED_FOR_ONE_RUN) {
+        lprec *lp1, *lp2;
+        lp1 = copy_lp(lp);
+        lp2 = copy_lp(lp);
+        reset_conv_network(nnet);
+        struct NNet *nnet1 = nnet;
+        struct NNet *nnet2 = duplicate_conv_network(nnet);
+
         pthread_t workers1, workers2;
         struct direct_run_check_conv_lp_args args1 = {
                             nnet1, input, output_map1, grad,
@@ -713,24 +712,30 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         count--;
         pthread_mutex_unlock(&lock);
 
+        delete_lp(lp1);
+        delete_lp(lp2);
+        destroy_conv_network(nnet2);
     }
     else{
+        lprec *lp1, *lp2;
+        lp1 = copy_lp(lp);
+        reset_conv_network(nnet);
+        struct NNet *nnet1 = nnet;
         sub_analyses += direct_run_check_conv_lp(nnet1, input,\
                             output_map1, grad,\
                             sigs1,\
                             target, lp1, &rule_num1, depth, start_time, false);
 
+        delete_lp(lp1);
+        lp2 = copy_lp(lp);
+        reset_conv_network(nnet);
+        struct NNet *nnet2 = nnet;
         sub_analyses += direct_run_check_conv_lp(nnet2, input,\
                             output_map2, grad,\
                             sigs2,\
                             target, lp2, &rule_num2, depth, start_time, false);
+        delete_lp(lp2);
     }
-
-    delete_lp(lp1);
-    delete_lp(lp2);
-
-    destroy_conv_network(nnet1);
-    destroy_conv_network(nnet2);
 
     depth --;
 
