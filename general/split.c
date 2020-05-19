@@ -14,6 +14,7 @@
 #define AVG_WINDOW 5
 #define MAX_THREAD 56
 #define MIN_DEPTH_PER_THREAD 5 
+#define MAX_RUNTIME 3600 // 1 hour
 
 int NEED_PRINT = 0;
 int NEED_FOR_ONE_RUN = 0;
@@ -211,12 +212,16 @@ bool check_functions1(struct NNet *nnet, struct Matrix *output){
  */
 void *direct_run_check_conv_lp_thread(void *args){
     struct direct_run_check_conv_lp_args *actual_args = args;
-    direct_run_check_conv_lp(actual_args->nnet, actual_args->input,\
-                     actual_args->output_map,
-                     actual_args->grad,
-                     actual_args->sigs,\
-                     actual_args->target,\
-                     actual_args->lp, actual_args->rule_num, actual_args->depth);
+    direct_run_check_conv_lp(actual_args->nnet,
+        actual_args->input,
+        actual_args->output_map,
+        actual_args->grad,
+        actual_args->sigs,
+        actual_args->target,
+        actual_args->lp, 
+        actual_args->rule_num,
+        actual_args->depth,
+        actual_args->start_time);
     return NULL;
 }
 
@@ -526,9 +531,20 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
                      bool *output_map, float *grad,
                      int *sigs, int target, lprec *lp,
-                     int *rule_num, int depth)
+                     int *rule_num, int depth, struct timeval start_time)
 {
     if(adv_found){
+        return false;
+    }
+
+    struct timeval current_time;
+    gettimeofday(&current_time, NULL);
+    if(current_time.tv_sec - start_time.tv_sec > MAX_RUNTIME) {
+        // Print the error message only once (thread safety not required)
+        if(!analysis_uncertain) {
+            printf("Timeout during splits \n");
+        }
+        analysis_uncertain = true;
         return false;
     }
 
@@ -566,7 +582,7 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
             printf("depth:%d, sig:%d Need to split!\n\n", depth, sigs[target]);
         isOverlap = split_interval_conv_lp(nnet, input, output_map, grad,
                          wrong_nodes_map, &wrong_node_length, sigs,
-                         lp, rule_num, depth);
+                         lp, rule_num, depth, start_time);
     }
     else{
         if(!adv_found)
@@ -578,8 +594,8 @@ bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
 
 
 bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
-                     bool *output_map, float *grad, int *wrong_nodes, int *wrong_node_length,
-                     int *sigs, lprec *lp, int *rule_num, int depth)
+    bool *output_map, float *grad, int *wrong_nodes, int *wrong_node_length,
+    int *sigs, lprec *lp, int *rule_num, int depth, struct timeval start_time)
 {
     if(adv_found){
         return false;
@@ -655,13 +671,13 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         struct direct_run_check_conv_lp_args args1 = {
                             nnet1, input, output_map1, grad,
                             sigs1,\
-                            target, lp1, &rule_num1, depth
+                            target, lp1, &rule_num1, depth, start_time
                         };
 
         struct direct_run_check_conv_lp_args args2 = {
                             nnet2, input, output_map2, grad,
                             sigs2,\
-                            target, lp2, &rule_num2, depth
+                            target, lp2, &rule_num2, depth, start_time
                         };
 
         pthread_create(&workers1, NULL,\
@@ -692,12 +708,12 @@ bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         isOverlap1 = direct_run_check_conv_lp(nnet1, input,\
                             output_map1, grad,\
                             sigs1,\
-                            target, lp1, &rule_num1, depth);
+                            target, lp1, &rule_num1, depth, start_time);
 
         isOverlap2 = direct_run_check_conv_lp(nnet2, input,\
                             output_map2, grad,\
                             sigs2,\
-                            target, lp2, &rule_num2, depth);
+                            target, lp2, &rule_num2, depth, start_time);
     }
 
     delete_lp(lp1);

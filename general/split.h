@@ -58,6 +58,7 @@ struct direct_run_check_conv_lp_args
 	lprec *lp;
 	int *rule_num;
 	int depth;
+	struct timeval start_time;
 };
 
 
@@ -90,8 +91,8 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 
 bool direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input, bool *output_map, float *grad,
                      int *sigs,
-                     int target, lprec *lp, int *rule_num, int depth);
+                     int target, lprec *lp, int *rule_num, int depth, struct timeval start_time);
 
 bool split_interval_conv_lp(struct NNet *nnet, struct Interval *input, bool *output_map, float *grad,
                      int *wrong_nodes, int *wrong_node_length, int *sigs,
-                     lprec *lp, int *rule_num, int depth);
+                     lprec *lp, int *rule_num, int depth, struct timeval start_time);

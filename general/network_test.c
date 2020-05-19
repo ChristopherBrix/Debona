@@ -277,7 +277,7 @@ int main( int argc, char *argv[]){
             is_overlap = split_interval_conv_lp(nnet, &input_interval,\
                                 output_map,\
                                 grad, wrong_nodes_map, &wrong_node_length, sigs,\
-                                lp, &rule_num, depth);
+                                lp, &rule_num, depth, start);
         }
 
         //write_LP(lp, stdout);
