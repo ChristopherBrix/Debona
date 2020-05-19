@@ -26,7 +26,7 @@ int thread_tot_cnt  = 0;
 int smear_cnt = 0;
 
 int progress = 0;
-int MAX_DEPTH = 30;
+int MAX_DEPTH = 1215752190; // never abort due to depth
 
 int progress_list[PROGRESS_DEPTH];
 int total_progress[PROGRESS_DEPTH];
