@@ -561,7 +561,7 @@ int direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
     for(int layer=1;layer<nnet->numLayers;layer++){
         total_nodes += nnet->layerSizes[layer];
     }
-    int wrong_nodes_map[total_nodes];
+    int *wrong_nodes_map = (int*)SAFEMALLOC(sizeof(int) * total_nodes);
     memset(wrong_nodes_map,0,sizeof(int)*total_nodes);
     int wrong_node_length = 0;
 
@@ -594,6 +594,8 @@ int direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
             if(NEED_PRINT) 
                 printf("depth:%d, sig:%d, UNSAT, great!\n\n", depth, sigs[target]);
     }
+
+    free(wrong_nodes_map);
     
     // Undo last split
     del_constraint(lp, *rule_num);
@@ -665,8 +667,8 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
     memcpy(output_map2, output_map, sizeof(bool)*outputSize);
 
 
-    int sigs1[total_nodes];
-    int sigs2[total_nodes];
+    int *sigs1 = (int*)SAFEMALLOC(sizeof(int) * total_nodes);
+    int *sigs2 = (int*)SAFEMALLOC(sizeof(int) * total_nodes);
 
     memcpy(sigs1, sigs, sizeof(int)*total_nodes);
     memcpy(sigs2, sigs, sizeof(int)*total_nodes);
@@ -755,6 +757,9 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         analyses_count += sub_analyses;
         pthread_mutex_unlock(&lock);
     }
+
+    free(sigs1);
+    free(sigs2);
 
     return sub_analyses;
 }
