@@ -40,10 +40,10 @@ struct NNet *load_conv_network(const char* filename, int img)
     }
     //Initialize variables
     int bufferSize = 650000;
-    char *buffer = (char*)malloc(sizeof(char)*bufferSize);
+    char *buffer = (char*)SAFEMALLOC(sizeof(char)*bufferSize);
     char *record, *line;
 
-    struct NNet *nnet = (struct NNet*)malloc(sizeof(struct NNet));
+    struct NNet *nnet = (struct NNet*)SAFEMALLOC(sizeof(struct NNet));
 
     //memset(nnet, 0, sizeof(struct NNet));
     //Read int parameters of neural network
@@ -58,7 +58,7 @@ struct NNet *load_conv_network(const char* filename, int img)
     nnet->maxLayerSize = atoi(strtok(NULL,",\n"));
 
     //Allocate space for and read values of the array members of the network
-    nnet->layerSizes = (int*)malloc(sizeof(int)*(nnet->numLayers+1+1));
+    nnet->layerSizes = (int*)SAFEMALLOC(sizeof(int)*(nnet->numLayers+1+1));
     line = fgets(buffer,bufferSize,fstream);
     record = strtok(line,",\n");
     for (int i = 0; i<((nnet->numLayers)+1); i++)
@@ -71,7 +71,7 @@ struct NNet *load_conv_network(const char* filename, int img)
     nnet->min = MIN_PIXEL;
     nnet->max = MAX_PIXEL;
     
-    nnet->layerTypes = (int*)malloc(sizeof(int)*nnet->numLayers);
+    nnet->layerTypes = (int*)SAFEMALLOC(sizeof(int)*nnet->numLayers);
     nnet->convLayersNum = 0;
     line = fgets(buffer,bufferSize,fstream);
     record = strtok(line,",\n");
@@ -84,9 +84,9 @@ struct NNet *load_conv_network(const char* filename, int img)
         record = strtok(NULL,",\n");
     }
     //initial convlayer parameters
-    nnet->convLayer = (int**)malloc(sizeof(int *)*nnet->convLayersNum);
+    nnet->convLayer = (int**)SAFEMALLOC(sizeof(int *)*nnet->convLayersNum);
     for(int i = 0; i < nnet->convLayersNum; i++){
-        nnet->convLayer[i] = (int*)malloc(sizeof(int)*5);
+        nnet->convLayer[i] = (int*)SAFEMALLOC(sizeof(int)*5);
     }
 
     for(int cl=0;cl<nnet->convLayersNum;cl++){
@@ -110,38 +110,38 @@ struct NNet *load_conv_network(const char* filename, int img)
     //Note that the bias array will have only one number per neuron, so
     //    its fourth dimension will always be one
     //
-    nnet->matrix = (float****)malloc(sizeof(float *)*(nnet->numLayers));
+    nnet->matrix = (float****)SAFEMALLOC(sizeof(float *)*(nnet->numLayers));
     for (int layer = 0; layer<nnet->numLayers; layer++){
         if(nnet->layerTypes[layer]==0){
-            nnet->matrix[layer] = (float***)malloc(sizeof(float *)*2);
-            nnet->matrix[layer][0] = (float**)malloc(sizeof(float *)*nnet->layerSizes[layer+1]);
-            nnet->matrix[layer][1] = (float**)malloc(sizeof(float *)*nnet->layerSizes[layer+1]);
+            nnet->matrix[layer] = (float***)SAFEMALLOC(sizeof(float *)*2);
+            nnet->matrix[layer][0] = (float**)SAFEMALLOC(sizeof(float *)*nnet->layerSizes[layer+1]);
+            nnet->matrix[layer][1] = (float**)SAFEMALLOC(sizeof(float *)*nnet->layerSizes[layer+1]);
             for (int row = 0; row < nnet->layerSizes[layer+1]; row++){
-                nnet->matrix[layer][0][row] = (float*)malloc(sizeof(float)*nnet->layerSizes[layer]);
-                nnet->matrix[layer][1][row] = (float*)malloc(sizeof(float));
+                nnet->matrix[layer][0][row] = (float*)SAFEMALLOC(sizeof(float)*nnet->layerSizes[layer]);
+                nnet->matrix[layer][1][row] = (float*)SAFEMALLOC(sizeof(float));
             }
         }
     }
 
-    nnet->conv_matrix = (float****)malloc(sizeof(float *)*nnet->convLayersNum);
+    nnet->conv_matrix = (float****)SAFEMALLOC(sizeof(float *)*nnet->convLayersNum);
     for(int layer = 0; layer < nnet->convLayersNum; layer++){
         int out_channel = nnet->convLayer[layer][0];
         int in_channel = nnet->convLayer[layer][1];
         int kernel_size = nnet->convLayer[layer][2]*nnet->convLayer[layer][2];
-        nnet->conv_matrix[layer]=(float***)malloc(sizeof(float*)*out_channel);
+        nnet->conv_matrix[layer]=(float***)SAFEMALLOC(sizeof(float*)*out_channel);
         for(int oc=0;oc<out_channel;oc++){
-            nnet->conv_matrix[layer][oc] = (float**)malloc(sizeof(float*)*in_channel);
+            nnet->conv_matrix[layer][oc] = (float**)SAFEMALLOC(sizeof(float*)*in_channel);
             for(int ic=0;ic<in_channel;ic++){
-                nnet->conv_matrix[layer][oc][ic] = (float*)malloc(sizeof(float)*kernel_size);
+                nnet->conv_matrix[layer][oc][ic] = (float*)SAFEMALLOC(sizeof(float)*kernel_size);
             }
 
         }
     }
 
-    nnet->conv_bias = (float**)malloc(sizeof(float*)*nnet->convLayersNum);
+    nnet->conv_bias = (float**)SAFEMALLOC(sizeof(float*)*nnet->convLayersNum);
     for(int layer = 0; layer < nnet->convLayersNum; layer++){
         int out_channel = nnet->convLayer[layer][0];
-        nnet->conv_bias[layer] = (float*)malloc(sizeof(float)*out_channel);
+        nnet->conv_bias[layer] = (float*)SAFEMALLOC(sizeof(float)*out_channel);
     }
     
     int layer = 0;
@@ -265,10 +265,10 @@ struct NNet *load_conv_network(const char* filename, int img)
         }
     }
 
-    struct Matrix *weights_low = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
-    struct Matrix *weights_up = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
-    struct Matrix *bias_low = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
-    struct Matrix *bias_up = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *weights_low = SAFEMALLOC((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *weights_up = SAFEMALLOC((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *bias_low = SAFEMALLOC((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *bias_up = SAFEMALLOC((nnet->numLayers+1)*sizeof(struct Matrix));
 
     for(int layer=0;layer<nnet->numLayers;layer++){
         if(nnet->layerTypes[layer]==1) continue;
@@ -277,9 +277,9 @@ struct NNet *load_conv_network(const char* filename, int img)
         weights_low[layer].col = nnet->layerSizes[layer+1];
         weights_up[layer].col = nnet->layerSizes[layer+1];
         weights_low[layer].data =\
-                    (float*)malloc(sizeof(float)*weights_low[layer].row * weights_low[layer].col);
+                    (float*)SAFEMALLOC(sizeof(float)*weights_low[layer].row * weights_low[layer].col);
         weights_up[layer].data =\
-                    (float*)malloc(sizeof(float)*weights_up[layer].row * weights_up[layer].col);
+                    (float*)SAFEMALLOC(sizeof(float)*weights_up[layer].row * weights_up[layer].col);
         
         int n=0;
         for(int i=0;i<weights_low[layer].col;i++){
@@ -294,8 +294,8 @@ struct NNet *load_conv_network(const char* filename, int img)
         bias_up[layer].col = nnet->layerSizes[layer+1];
         bias_low[layer].row = (float)1;
         bias_up[layer].row = (float)1;
-        bias_low[layer].data = (float*)malloc(sizeof(float)*bias_low[layer].col);
-        bias_up[layer].data = (float*)malloc(sizeof(float)*bias_up[layer].col);
+        bias_low[layer].data = (float*)SAFEMALLOC(sizeof(float)*bias_low[layer].col);
+        bias_up[layer].data = (float*)SAFEMALLOC(sizeof(float)*bias_up[layer].col);
         for(int i=0;i<bias_low[layer].col;i++){
             bias_low[layer].data[i] = nnet->matrix[layer][1][i][0];
             bias_up[layer].data[i] = nnet->matrix[layer][1][i][0];
@@ -306,18 +306,18 @@ struct NNet *load_conv_network(const char* filename, int img)
     weights_up[nnet->numLayers].row = nnet->layerSizes[nnet->numLayers];
     weights_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
     weights_low[nnet->numLayers].data =\
-        (float*)malloc(sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
+        (float*)SAFEMALLOC(sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
     memset(weights_low[nnet->numLayers].data, 0, sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
     weights_up[nnet->numLayers].data =\
-        (float*)malloc(sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
+        (float*)SAFEMALLOC(sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
     memset(weights_up[nnet->numLayers].data, 0, sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
     bias_low[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
     bias_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
     bias_low[nnet->numLayers].row = (float)1;
     bias_up[nnet->numLayers].row = (float)1;
-    bias_low[nnet->numLayers].data = (float*)malloc(sizeof(float)*bias_low[nnet->numLayers].col);
+    bias_low[nnet->numLayers].data = (float*)SAFEMALLOC(sizeof(float)*bias_low[nnet->numLayers].col);
     memset(bias_low[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
-    bias_up[nnet->numLayers].data = (float*)malloc(sizeof(float)*bias_up[nnet->numLayers].col);
+    bias_up[nnet->numLayers].data = (float*)SAFEMALLOC(sizeof(float)*bias_up[nnet->numLayers].col);
     memset(bias_up[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
 
     nnet->weights_low = weights_low;
@@ -328,10 +328,10 @@ struct NNet *load_conv_network(const char* filename, int img)
     free(buffer);
     fclose(fstream);
     
-    nnet->cache_equation_low = (float *)malloc(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
-    nnet->cache_equation_up = (float *)malloc(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
-    nnet->cache_bias_low = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
-    nnet->cache_bias_up = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
+    nnet->cache_equation_low = (float *)SAFEMALLOC(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
+    nnet->cache_equation_up = (float *)SAFEMALLOC(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
+    nnet->cache_bias_low = (float *)SAFEMALLOC(sizeof(float)*(1)*(nnet->maxLayerSize));
+    nnet->cache_bias_up = (float *)SAFEMALLOC(sizeof(float)*(1)*(nnet->maxLayerSize));
     nnet->cache_valid = false;
 
     nnet->is_duplicate = false;
@@ -341,7 +341,7 @@ struct NNet *load_conv_network(const char* filename, int img)
 
 struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
 {
-    struct NNet *nnet = (struct NNet*)malloc(sizeof(struct NNet));
+    struct NNet *nnet = (struct NNet*)SAFEMALLOC(sizeof(struct NNet));
 
     nnet->numLayers = orig_nnet->numLayers;
     nnet->inputSize = orig_nnet->inputSize;
@@ -381,10 +381,10 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
 
     // Dont't copy weights and biases from orig_net! Those may have been
     // modified by ReLU relax operations
-    struct Matrix *weights_low = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
-    struct Matrix *weights_up = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
-    struct Matrix *bias_low = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
-    struct Matrix *bias_up = malloc((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *weights_low = SAFEMALLOC((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *weights_up = SAFEMALLOC((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *bias_low = SAFEMALLOC((nnet->numLayers+1)*sizeof(struct Matrix));
+    struct Matrix *bias_up = SAFEMALLOC((nnet->numLayers+1)*sizeof(struct Matrix));
 
     for(int layer=0;layer<nnet->numLayers;layer++){
         if(nnet->layerTypes[layer]==1) continue;
@@ -393,9 +393,9 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
         weights_low[layer].col = nnet->layerSizes[layer+1];
         weights_up[layer].col = nnet->layerSizes[layer+1];
         weights_low[layer].data =\
-                    (float*)malloc(sizeof(float)*weights_low[layer].row * weights_low[layer].col);
+                    (float*)SAFEMALLOC(sizeof(float)*weights_low[layer].row * weights_low[layer].col);
         weights_up[layer].data =\
-                    (float*)malloc(sizeof(float)*weights_up[layer].row * weights_up[layer].col);
+                    (float*)SAFEMALLOC(sizeof(float)*weights_up[layer].row * weights_up[layer].col);
         
         int n=0;
         for(int i=0;i<weights_low[layer].col;i++){
@@ -410,8 +410,8 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
         bias_up[layer].col = nnet->layerSizes[layer+1];
         bias_low[layer].row = (float)1;
         bias_up[layer].row = (float)1;
-        bias_low[layer].data = (float*)malloc(sizeof(float)*bias_low[layer].col);
-        bias_up[layer].data = (float*)malloc(sizeof(float)*bias_up[layer].col);
+        bias_low[layer].data = (float*)SAFEMALLOC(sizeof(float)*bias_low[layer].col);
+        bias_up[layer].data = (float*)SAFEMALLOC(sizeof(float)*bias_up[layer].col);
         for(int i=0;i<bias_low[layer].col;i++){
             bias_low[layer].data[i] = nnet->matrix[layer][1][i][0];
             bias_up[layer].data[i] = nnet->matrix[layer][1][i][0];
@@ -422,18 +422,18 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
     weights_up[nnet->numLayers].row = nnet->layerSizes[nnet->numLayers];
     weights_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
     weights_low[nnet->numLayers].data =\
-        (float*)malloc(sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
+        (float*)SAFEMALLOC(sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
     memset(weights_low[nnet->numLayers].data, 0, sizeof(float)*weights_low[nnet->numLayers].row * weights_low[nnet->numLayers].col);
     weights_up[nnet->numLayers].data =\
-        (float*)malloc(sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
+        (float*)SAFEMALLOC(sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
     memset(weights_up[nnet->numLayers].data, 0, sizeof(float)*weights_up[nnet->numLayers].row * weights_up[nnet->numLayers].col);
     bias_low[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
     bias_up[nnet->numLayers].col = nnet->layerSizes[nnet->numLayers + 1];
     bias_low[nnet->numLayers].row = (float)1;
     bias_up[nnet->numLayers].row = (float)1;
-    bias_low[nnet->numLayers].data = (float*)malloc(sizeof(float)*bias_low[nnet->numLayers].col);
+    bias_low[nnet->numLayers].data = (float*)SAFEMALLOC(sizeof(float)*bias_low[nnet->numLayers].col);
     memset(bias_low[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
-    bias_up[nnet->numLayers].data = (float*)malloc(sizeof(float)*bias_up[nnet->numLayers].col);
+    bias_up[nnet->numLayers].data = (float*)SAFEMALLOC(sizeof(float)*bias_up[nnet->numLayers].col);
     memset(bias_up[nnet->numLayers].data, 0, sizeof(float)*bias_low[nnet->numLayers].col);
 
 
@@ -442,10 +442,10 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
     nnet->bias_low = bias_low;
     nnet->bias_up = bias_up;
     
-    nnet->cache_equation_low = (float *)malloc(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
-    nnet->cache_equation_up = (float *)malloc(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
-    nnet->cache_bias_low = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
-    nnet->cache_bias_up = (float *)malloc(sizeof(float)*(1)*(nnet->maxLayerSize));
+    nnet->cache_equation_low = (float *)SAFEMALLOC(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
+    nnet->cache_equation_up = (float *)SAFEMALLOC(sizeof(float)*((nnet->inputSize))*(nnet->maxLayerSize));
+    nnet->cache_bias_low = (float *)SAFEMALLOC(sizeof(float)*(1)*(nnet->maxLayerSize));
+    nnet->cache_bias_up = (float *)SAFEMALLOC(sizeof(float)*(1)*(nnet->maxLayerSize));
     nnet->cache_valid = false;
 
     nnet->is_duplicate = true;
@@ -838,7 +838,7 @@ void load_inputs(int img, int inputSize, float *input){
         exit(1);
     }
     int bufferSize = 10240*5;
-    char *buffer = (char*)malloc(sizeof(char)*bufferSize);
+    char *buffer = (char*)SAFEMALLOC(sizeof(char)*bufferSize);
     char *record, *line;
     line = fgets(buffer,bufferSize,fstream);
     record = strtok(line,",\n");
@@ -986,7 +986,7 @@ int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *out
                 out_size = (int)(tmp_out_size)-1;
             }
 
-            float *z_new = (float*)malloc(sizeof(float)*padding_size*padding_size*in_channel);
+            float *z_new = (float*)SAFEMALLOC(sizeof(float)*padding_size*padding_size*in_channel);
             memset(z_new, 0, sizeof(float)*padding_size*padding_size*in_channel);
             for(int ic=0;ic<in_channel;ic++){
                 for(int h=0;h<size;h++){
@@ -1168,13 +1168,13 @@ void update_equations(struct NNet *nnet, int layer) {
     memcpy(nnet->cache_bias_low, nnet->bias_low[layer].data, sizeof(float) * nnet->layerSizes[layer + 1]);
     memcpy(nnet->cache_bias_up, nnet->bias_up[layer].data, sizeof(float) * nnet->layerSizes[layer + 1]);
 
-    float *equation_low_pos = (float*)malloc(sizeof(float) *\
+    float *equation_low_pos = (float*)SAFEMALLOC(sizeof(float) *\
                             (inputSize)*maxLayerSize);
-    float *equation_low_neg = (float*)malloc(sizeof(float) *\
+    float *equation_low_neg = (float*)SAFEMALLOC(sizeof(float) *\
                             (inputSize)*maxLayerSize);
-    float *equation_up_pos = (float*)malloc(sizeof(float) *\
+    float *equation_up_pos = (float*)SAFEMALLOC(sizeof(float) *\
                             (inputSize)*maxLayerSize);
-    float *equation_up_neg = (float*)malloc(sizeof(float) *\
+    float *equation_up_neg = (float*)SAFEMALLOC(sizeof(float) *\
                             (inputSize)*maxLayerSize);
 
     for(int l=layer; l>0; l--) {
