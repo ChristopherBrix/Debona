@@ -715,7 +715,15 @@ float set_output_constraints(lprec *lp, float *equation, float bias,
     }
     else if(ret == TIMEOUT) {
         feasible = -1;
-        printf("Timout while solving LP \n");
+        printf("LP solving: timeout \n");
+    }
+    else if(ret == NUMFAILURE) {
+        feasible = -1;
+        printf("LP solving: numerical failure \n");
+    }
+    else if(ret == ACCURACYERROR) {
+        feasible = -1;
+        printf("LP solving: accuracy error \n");
     }
     else if(ret == INFEASIBLE) {
         feasible = 0;
