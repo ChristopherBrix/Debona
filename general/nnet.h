@@ -24,6 +24,19 @@ extern float INF;
 extern int NORM_INPUT;
 extern struct timeval start,finish, last_finish;
 
+static void* safe_malloc(size_t n, unsigned long line)
+{
+    void* p = malloc(n);
+    if (!p)
+    {
+        fprintf(stderr, "[%s:%zu]Out of memory(%ul bytes)\n",
+                __FILE__, line, (unsigned int)n);
+        exit(EXIT_FAILURE);
+    }
+    return p;
+}
+#define SAFEMALLOC(n) safe_malloc(n, __LINE__)
+
 //Neural Network Struct
 struct NNet 
 {

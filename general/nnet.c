@@ -689,7 +689,7 @@ float set_output_constraints(lprec *lp, float *equation, float bias,
     
     set_add_rowmode(lp, FALSE);
     
-    set_obj_fnex(lp, Ncol+1, row, NULL);
+    set_obj_fnex(lp, Ncol, row, NULL);
     //write_lp(lp, "model3.lp");
     int ret = 0;
 

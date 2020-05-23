@@ -33,16 +33,3 @@ void printMatrix(struct Matrix* A);
 void fprintMatrix(FILE *fp, struct Matrix* A);
 
 void relu(struct Matrix* A);
-
-static void* safe_malloc(size_t n, unsigned long line)
-{
-    void* p = malloc(n);
-    if (!p)
-    {
-        fprintf(stderr, "[%s:%ul]Out of memory(%ul bytes)\n",
-                __FILE__, line, (unsigned int)n);
-        exit(EXIT_FAILURE);
-    }
-    return p;
-}
-#define SAFEMALLOC(n) safe_malloc(n, __LINE__)
