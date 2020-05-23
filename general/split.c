@@ -694,6 +694,19 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
         struct NNet *nnet1 = nnet;
         struct NNet *nnet2 = duplicate_conv_network(nnet);
 
+        pthread_attr_t attr;
+        int status = pthread_attr_init(&attr);
+        if (status != 0) {
+            printf("pthread_attr_init: %d \n", status);
+            exit(1);
+        }
+        status = pthread_attr_setstacksize(&attr, 8*1024*1024);
+        if (status != 0) {
+            printf("pthread_attr_setstacksize: %d \n", status);
+            exit(1);
+        }
+
+
         pthread_t workers1, workers2;
         struct direct_run_check_conv_lp_args args1 = {
                             nnet1, input, output_map1, grad,
@@ -707,14 +720,14 @@ int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
                             target, lp2, &rule_num2, depth, start_time, true
                         };
 
-        pthread_create(&workers1, NULL,\
+        pthread_create(&workers1, &attr,\
                 direct_run_check_conv_lp_thread, &args1);
         pthread_mutex_lock(&lock);
         count += 2;
         thread_tot_cnt += 2;
         pthread_mutex_unlock(&lock);
         //printf ( "pid1: %ld start %d \n", syscall(SYS_gettid), count);
-        pthread_create(&workers2, NULL,\
+        pthread_create(&workers2, &attr,\
                 direct_run_check_conv_lp_thread, &args2);
         //printf ( "pid2: %ld start %d \n", syscall(SYS_gettid), count);
         pthread_join(workers1, NULL);
