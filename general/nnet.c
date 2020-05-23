@@ -450,6 +450,8 @@ struct NNet *duplicate_conv_network(struct NNet *orig_nnet)
 
     nnet->is_duplicate = true;
 
+    nnet->input_interval = orig_nnet->input_interval;
+
     return nnet;
 }
 

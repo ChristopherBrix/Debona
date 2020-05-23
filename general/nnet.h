@@ -71,6 +71,8 @@ struct NNet
     int feature_range_length;
     int split_feature;
 
+    struct Interval *input_interval;
+
 
     float *cache_equation_low;
     float *cache_equation_up;

@@ -157,6 +157,8 @@ int main( int argc, char *argv[]){
             normalize_input_interval(nnet, &input_interval);
         }
 
+        nnet->input_interval = &input_interval;
+
         float o[nnet->outputSize];
         struct Matrix output = {o, outputSize, 1};
         
@@ -310,7 +312,7 @@ int main( int argc, char *argv[]){
 
         printf("Current analysis result: %d adv, %d non-adv, %d undetermined \n",
           adv_num, non_adv, no_prove);
-        if(!analysis_uncertain) {
+        if(!analysis_uncertain || adv_found) {
             printf("Performed sub-analyses: %d \n", analyses_count);
         }
         printf("time: %f \n\n", time_spent);
