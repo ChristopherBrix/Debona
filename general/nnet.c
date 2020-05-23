@@ -725,6 +725,11 @@ float set_output_constraints(lprec *lp, float *equation, float bias,
         feasible = -1;
         printf("LP solving: accuracy error \n");
     }
+    else if(ret == UNBOUNDED) {
+        feasible = -1;
+        printf("LP solving: unbounded. LP printout follows: \n");
+        print_lp(lp);
+    }
     else if(ret == INFEASIBLE) {
         feasible = 0;
     }
