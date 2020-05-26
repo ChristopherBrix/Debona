@@ -62,8 +62,10 @@ struct NNet
     float ****matrix; //4D jagged array that stores the weights and biases
                        //the neural network.
     struct Matrix* weights_low;
+    struct Matrix* weights_low_gtzero;
     struct Matrix* weights_up;
     struct Matrix* bias_low;
+    struct Matrix* bias_low_gtzero;
     struct Matrix* bias_up;
 
     int target;
@@ -79,6 +81,12 @@ struct NNet
     float *cache_bias_low;
     float *cache_bias_up;
     bool cache_valid;
+
+    float *cache_equation_low_gtzero;
+    float *cache_equation_up_gtzero;
+    float *cache_bias_low_gtzero;
+    float *cache_bias_up_gtzero;
+    bool cache_valid_gtzero;
 
     bool is_duplicate;
 };
@@ -96,15 +104,16 @@ void sym_fc_layer(struct NNet *nnet, int layer, int err_row);
 
 void sym_conv_layer(struct SymInterval *sInterval, struct SymInterval *new_sInterval, struct NNet *nnet, int layer, int err_row);
 
-void update_equations(struct NNet *nnet, int layer);
+void update_equations(struct NNet *nnet, int layer, bool use_gtzero_lb);
 
 void relu_bound(struct NNet *nnet, 
                 struct Interval *input, int i, int layer, int err_row, 
-                float *low, float *up, int ignore);
+                float *low, float *up, int ignore, bool use_gtzero_lb);
 
 int relax_relu(struct NNet *nnet, 
     float lower_bound, float upper_bound,
-    float up_lower_bound, float up_upper_bound, struct Interval *input, int i, int layer,
+    float up_lower_bound, float up_upper_bound, float low_temp_lower_gt,
+    struct Interval *input, int i, int layer,
     int *err_row, int *wrong_node_length, int *wcnt, bool ignore_invalid_output);
 
 int sym_relu_layer(struct Interval *input, struct Interval *output,

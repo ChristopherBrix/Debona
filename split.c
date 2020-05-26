@@ -311,7 +311,7 @@ int sym_relu_lp(struct Interval *input,
 
     int inputSize = nnet->inputSize;
 
-    update_equations(nnet, layer);
+    update_equations(nnet, layer, false);
 
 
     for (int i=0; i < nnet->layerSizes[layer+1]; i++)
@@ -322,8 +322,8 @@ int sym_relu_lp(struct Interval *input,
         float up_tempVal_upper = 0;
         float up_tempVal_lower = 0;
 
-        relu_bound(nnet, input, i, layer, *err_row, &up_tempVal_lower, &up_tempVal_upper, 2);
-        relu_bound(nnet, input, i, layer, *err_row, &low_tempVal_lower, &low_tempVal_upper, 1);
+        relu_bound(nnet, input, i, layer, *err_row, &up_tempVal_lower, &up_tempVal_upper, 2, false);
+        relu_bound(nnet, input, i, layer, *err_row, &low_tempVal_lower, &low_tempVal_upper, 1, false);
 
 
         if(*node_cnt == target){
@@ -393,10 +393,12 @@ int sym_relu_lp(struct Interval *input,
         //printf("Before relax UP (%f - %f), LOW (%f - %f) \n",
         //    up_tempVal_lower, up_tempVal_upper, low_tempVal_lower, low_tempVal_upper);
 
-            
+        float low_temp_upper_gt = 0;
+        float low_temp_lower_gt = 0;
+        relu_bound(nnet, input, i, layer, *err_row, &low_temp_lower_gt, &low_temp_upper_gt, 1, true);
             
         R[layer][i] = relax_relu(nnet, low_tempVal_lower, low_tempVal_upper,
-            up_tempVal_lower, up_tempVal_upper, input, i, layer,
+            up_tempVal_lower, up_tempVal_upper, low_temp_lower_gt, input, i, layer,
             err_row, wrong_node_length, &wcnt, true);
 
         //float tempVal_upper=0.0, tempVal_lower=0.0;
@@ -482,7 +484,7 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                 if(NEED_PRINT){
                     float tempVal_upper=0.0, tempVal_lower=0.0;
                     relu_bound(nnet, input, i, layer, err_row,
-                            &tempVal_lower, &tempVal_upper, 0);
+                            &tempVal_lower, &tempVal_upper, 0, false);
                     //printf("target:%d, sig:%d, node:%d, l:%f, u:%f\n",
                     //            target, sigs[target], i, tempVal_lower, tempVal_upper);
                     printf("After ReLu: Layer %d, node %d: %f - %f \n", layer, i, tempVal_lower, tempVal_upper);
@@ -498,7 +500,7 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                     float o[outputSize];
                     memset(o, 0, sizeof(float)*outputSize);
                     if(output_map[i]){
-                        update_equations(nnet, layer+1);
+                        update_equations(nnet, layer+1, false);
 
                         int search = set_output_constraints(lp, &(nnet->cache_equation_up[0*(inputSize)]), nnet->cache_bias_up[0],
                             0, rule_num, inputSize, MAX, &upper,
