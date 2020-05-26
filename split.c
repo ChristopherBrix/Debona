@@ -340,6 +340,9 @@ int sym_relu_lp(struct Interval *input,
                 //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
         }
+        float low_temp_upper_gt = 0;
+        float low_temp_lower_gt = 0;
+        relu_bound(nnet, input, i, layer, *err_row, &low_temp_lower_gt, &low_temp_upper_gt, 1, true);
 
         // handle the nodes that are split
         if(sigs[*node_cnt] == 0){
@@ -357,6 +360,9 @@ int sym_relu_lp(struct Interval *input,
             if(up_tempVal_lower > 0) {
                 up_tempVal_lower = 0;
             }
+            if(low_temp_lower_gt > 0){
+                low_temp_lower_gt = 0;
+            }
         }
         else if(sigs[*node_cnt] == 1){
             low_tempVal_lower = 0;
@@ -372,6 +378,9 @@ int sym_relu_lp(struct Interval *input,
             }
             if(up_tempVal_upper < 0) {
                 up_tempVal_upper = 0;
+            }
+            if(low_temp_lower_gt < 0) {
+                low_temp_lower_gt = 0;
             }
         }
 
@@ -393,9 +402,6 @@ int sym_relu_lp(struct Interval *input,
         //printf("Before relax UP (%f - %f), LOW (%f - %f) \n",
         //    up_tempVal_lower, up_tempVal_upper, low_tempVal_lower, low_tempVal_upper);
 
-        float low_temp_upper_gt = 0;
-        float low_temp_lower_gt = 0;
-        relu_bound(nnet, input, i, layer, *err_row, &low_temp_lower_gt, &low_temp_upper_gt, 1, true);
             
         R[layer][i] = relax_relu(nnet, low_tempVal_lower, low_tempVal_upper,
             up_tempVal_lower, up_tempVal_upper, low_temp_lower_gt, input, i, layer,
@@ -417,6 +423,7 @@ int sym_relu_lp(struct Interval *input,
     }
 
     nnet->cache_valid = false;
+    nnet->cache_valid_gtzero = false;
 
     return wcnt;
 }
@@ -480,6 +487,7 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                 nnet->weights_up[nnet->numLayers].data[i] = 1;
                 nnet->weights_up[nnet->numLayers].data[nnet->target] = -1;
                 nnet->cache_valid = false;
+                nnet->cache_valid_gtzero = false;
 
                 if(NEED_PRINT){
                     float tempVal_upper=0.0, tempVal_lower=0.0;

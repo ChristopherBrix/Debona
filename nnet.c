@@ -565,6 +565,7 @@ struct NNet *reset_conv_network(struct NNet *nnet)
 
 
     nnet->cache_valid = false;
+    nnet->cache_valid_gtzero = false;
 
     return nnet;
 }
