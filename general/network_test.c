@@ -99,10 +99,11 @@ int main( int argc, char *argv[]){
 
     int image_start = 0;
     int image_length = 0;
-    if(PROPERTY == 0){
-        image_length = 1000;
-        image_start = 0;
+    if(1){
+        image_length = 1;
+        image_start = PROPERTY;
         INF = 10;
+        PROPERTY = 0;
     }
     else if(PROPERTY==1){
         /*
