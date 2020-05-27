@@ -520,8 +520,10 @@ struct NNet *reset_conv_network(struct NNet *nnet)
     // Dont't copy weights and biases from orig_net! Those may have been
     // modified by ReLU relax operations
     struct Matrix *weights_low = nnet->weights_low;
+    struct Matrix *weights_low_gtzero = nnet->weights_low_gtzero;
     struct Matrix *weights_up = nnet->weights_up;
     struct Matrix *bias_low = nnet->bias_low;
+    struct Matrix *bias_low_gtzero = nnet->bias_low_gtzero;
     struct Matrix *bias_up = nnet->bias_up;
 
     for(int layer=0;layer<nnet->numLayers;layer++){
@@ -536,6 +538,7 @@ struct NNet *reset_conv_network(struct NNet *nnet)
             for(int j=0;j<weights_low[layer].row;j++){
                 float w = nnet->matrix[layer][0][i][j];
                 weights_low[layer].data[n] = w;
+                weights_low_gtzero[layer].data[n] = w;
                 weights_up[layer].data[n] = w;
                 n++;
             }
@@ -547,6 +550,7 @@ struct NNet *reset_conv_network(struct NNet *nnet)
         
         for(int i=0;i<bias_low[layer].col;i++){
             bias_low[layer].data[i] = nnet->matrix[layer][1][i][0];
+            bias_low_gtzero[layer].data[i] = nnet->matrix[layer][1][i][0];
             bias_up[layer].data[i] = nnet->matrix[layer][1][i][0];
         }
     } 
@@ -1227,7 +1231,8 @@ void update_equations(struct NNet *nnet, int layer, bool use_gtzero_lb) {
     int inputSize    = nnet->inputSize;
     int maxLayerSize   = nnet->maxLayerSize;
 
-
+    use_gtzero_lb = false;
+    
     float *cache_equation_low;
     float *cache_equation_up;
     float *cache_bias_low;
@@ -1443,7 +1448,7 @@ void relu_bound(struct NNet *nnet,
                 struct Interval *input, int i, int layer, int err_row, 
                 float *low, float *up, int ignore, bool use_gtzero_lb){
     int inputSize    = nnet->inputSize;
-    
+    use_gtzero_lb = false;
     update_equations(nnet, layer, use_gtzero_lb);
 
     
