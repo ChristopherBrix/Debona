@@ -88,7 +88,7 @@ int search_queue(int *wrong_nodes, int *wrong_node_length, int node_cnt);
 
 
 bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
-	struct Interval *input, bool *output_map, int *wrong_nodes,
+	struct Interval *input, bool *output_map, float *grad, int *wrong_nodes,
 	int *wrong_node_length, int *sigs, int target, lprec *lp,
 	int *rule_num);
 
