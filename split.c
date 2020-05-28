@@ -144,7 +144,7 @@ bool check_not_min1(struct NNet *nnet, struct Matrix *output){
 
 
 bool check_not_max_norm(struct NNet *nnet, struct Interval *output){
-    float t = output->lower_matrix.data[nnet->target];
+    double t = output->lower_matrix.data[nnet->target];
     for(int i=0;i<nnet->outputSize;i++){
         if(output->upper_matrix.data[i]>t && i != nnet->target){
             return true;
@@ -230,7 +230,7 @@ void *direct_run_check_conv_lp_thread(void *args){
 
 
 void check_adv1(struct NNet* nnet, struct Matrix *adv){
-    float out[nnet->outputSize];
+    double out[nnet->outputSize];
     struct Matrix output = {out, nnet->outputSize, 1};
     forward_prop_conv(nnet, adv, &output);
     bool is_adv = check_functions1(nnet, &output);
@@ -288,11 +288,11 @@ int search_queue(int *wrong_nodes, int *wrong_node_length, int node_cnt){
     return wrong_ind;
 }
 
-int max(float a, float b){
+int max(double a, double b){
     return (a>b)?a:b;
 }
 
-int min(float a, float b){
+int min(double a, double b){
     return (a<b)?a:b;
 }
 
@@ -317,10 +317,10 @@ int sym_relu_lp(struct Interval *input,
     for (int i=0; i < nnet->layerSizes[layer+1]; i++)
     {
 
-        float low_tempVal_upper = 0;
-        float low_tempVal_lower = 0;
-        float up_tempVal_upper = 0;
-        float up_tempVal_lower = 0;
+        double low_tempVal_upper = 0;
+        double low_tempVal_lower = 0;
+        double up_tempVal_upper = 0;
+        double up_tempVal_lower = 0;
 
         relu_bound(nnet, input, i, layer, *err_row, &up_tempVal_lower, &up_tempVal_upper, 2, false);
         relu_bound(nnet, input, i, layer, *err_row, &low_tempVal_lower, &low_tempVal_upper, 1, false);
@@ -340,8 +340,8 @@ int sym_relu_lp(struct Interval *input,
                 //        i*(inputSize+1), rule_num, sigs[target], inputSize);
             }
         }
-        float low_temp_upper_gt = 0;
-        float low_temp_lower_gt = 0;
+        double low_temp_upper_gt = 0;
+        double low_temp_lower_gt = 0;
         relu_bound(nnet, input, i, layer, *err_row, &low_temp_lower_gt, &low_temp_upper_gt, 1, true);
 
         // handle the nodes that are split
@@ -392,7 +392,7 @@ int sym_relu_lp(struct Interval *input,
 
         if(low_tempVal_lower > up_tempVal_lower || low_tempVal_upper > up_tempVal_upper) {
             printf("2) Invalid (switched) bounds \n");
-            printf("(%f - %f) - (%f - %f) \n", low_tempVal_lower, low_tempVal_upper, up_tempVal_lower, up_tempVal_upper);
+            printf("(%.20f - %.20f) - (%.20f - %.20f) \n", low_tempVal_lower, low_tempVal_upper, up_tempVal_lower, up_tempVal_upper);
             //printf("Upper: "); printMatrix(sym_interval->matrix_up);
             //printf("Lower: "); printMatrix(sym_interval->matrix_low);
             //printf("Error: "); printMatrix(sym_interval->err_matrix);
@@ -407,7 +407,7 @@ int sym_relu_lp(struct Interval *input,
             up_tempVal_lower, up_tempVal_upper, low_temp_lower_gt, input, i, layer,
             err_row, wrong_node_length, &wcnt, true);
 
-        //float tempVal_upper=0.0, tempVal_lower=0.0;
+        //double tempVal_upper=0.0, tempVal_lower=0.0;
         //relu_bound(nnet, input, i, layer, *err_row,
         //            &tempVal_lower, &tempVal_upper, 0);
 
@@ -430,7 +430,7 @@ int sym_relu_lp(struct Interval *input,
 
 
 bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
-                         struct Interval *input, bool *output_map, float *grad,
+                         struct Interval *input, bool *output_map, double *grad,
                          int *wrong_nodes_map, int *wrong_node_length,
                          int *sigs, int target, lprec *lp, int *rule_num)
 {
@@ -483,14 +483,14 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                     printf("Too many last nodes \n");
                     exit(1);
                 }
-                memset(nnet->weights_up[nnet->numLayers].data, 0, sizeof(float)*nnet->weights_up[nnet->numLayers].col*nnet->weights_up[nnet->numLayers].row);
+                memset(nnet->weights_up[nnet->numLayers].data, 0, sizeof(double)*nnet->weights_up[nnet->numLayers].col*nnet->weights_up[nnet->numLayers].row);
                 nnet->weights_up[nnet->numLayers].data[i] = 1;
                 nnet->weights_up[nnet->numLayers].data[nnet->target] = -1;
                 nnet->cache_valid = false;
                 nnet->cache_valid_gtzero = false;
 
                 if(NEED_PRINT){
-                    float tempVal_upper=0.0, tempVal_lower=0.0;
+                    double tempVal_upper=0.0, tempVal_lower=0.0;
                     relu_bound(nnet, input, i, layer, err_row,
                             &tempVal_lower, &tempVal_upper, 0, false);
                     //printf("target:%d, sig:%d, node:%d, l:%f, u:%f\n",
@@ -501,12 +501,12 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 
                 if(i!=nnet->target){
                     //gettimeofday(&start, NULL);
-                    float upper = 0.0;
-                    float input_prev[inputSize];
+                    double upper = 0.0;
+                    double input_prev[inputSize];
                     struct Matrix input_prev_matrix = {input_prev, 1, inputSize};
-                    memset(input_prev, 0, sizeof(float)*inputSize);
-                    float o[outputSize];
-                    memset(o, 0, sizeof(float)*outputSize);
+                    memset(input_prev, 0, sizeof(double)*inputSize);
+                    double o[outputSize];
+                    memset(o, 0, sizeof(double)*outputSize);
                     if(output_map[i]){
                         update_equations(nnet, layer+1, false);
 
@@ -562,7 +562,7 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 
 
 int direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
-    bool *output_map, float *grad, int *sigs, int target, lprec *lp,
+    bool *output_map, double *grad, int *sigs, int target, lprec *lp,
     int *rule_num, int depth, struct timeval start_time,
     bool increment_global_counter)
 {
@@ -642,7 +642,7 @@ int direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
 
 
 int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
-    bool *output_map, float *grad, int *wrong_nodes, int *wrong_node_length,
+    bool *output_map, double *grad, int *wrong_nodes, int *wrong_node_length,
     int *sigs, lprec *lp, int *rule_num, int depth, struct timeval start_time,
     bool increment_global_counter)
 {

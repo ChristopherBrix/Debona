@@ -6,7 +6,7 @@
 
 struct Matrix
 {
-	float* data;
+	double* data;
 	int row, col;
 };
 
@@ -17,10 +17,10 @@ typedef struct {
 } compute_multiply;
 
 
-void add_constant(struct Matrix* A, float alpha);
+void add_constant(struct Matrix* A, double alpha);
 
 void matmul_with_factor(struct Matrix* A, struct Matrix* B, struct Matrix* C, 
-						float alpha, float beta);
+						double alpha, double beta);
 
 void matmul(struct Matrix* A, struct Matrix* B, struct Matrix* C);
 

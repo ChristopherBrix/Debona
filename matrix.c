@@ -1,15 +1,15 @@
 #include "matrix.h"
 
 void matmul_with_factor(struct Matrix* A, struct Matrix* B, struct Matrix* C, 
-						float alpha, float beta) {
+						double alpha, double beta) {
 	int m = A->row;
     int k = A->col;
     int n = B->col;
-	cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, 
+	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, 
 						n, k, alpha, A->data, m, B->data, k, beta, C->data, m);
 }
 
-void add_constant(struct Matrix* A, float alpha){
+void add_constant(struct Matrix* A, double alpha){
 	int m = A->row;
     int k = A->col;
 	for(int i=0;i<m*k;i++){
@@ -24,7 +24,7 @@ void matmul_with_bias(struct Matrix* A, struct Matrix* B, struct Matrix* C)
     int n = B->col;
     C->row = A->row;
     C->col = B->col;
-    cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, 
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, 
                         n, k, 1, A->data, m, B->data, k, 1, C->data, m);
 }
 
@@ -35,7 +35,7 @@ void matmul(struct Matrix* A, struct Matrix* B, struct Matrix* C)
     int n = B->col;
     C->row = A->row;
     C->col = B->col;
-    cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, 
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, 
     					n, k, 1, A->data, m, B->data, k, 0, C->data, m);
 }
 

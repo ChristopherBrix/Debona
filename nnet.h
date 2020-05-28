@@ -20,7 +20,7 @@ extern int ERR_NODE;
 extern int PROPERTY;
 extern char *LOG_FILE;
 extern FILE *fp;
-extern float INF;
+extern double INF;
 extern int NORM_INPUT;
 extern struct timeval start,finish, last_finish;
 
@@ -54,12 +54,12 @@ struct NNet
     */
     int convLayersNum;
     int **convLayer;
-    float ****conv_matrix;
-    float **conv_bias;
+    double ****conv_matrix;
+    double **conv_bias;
 
-    float min;      //Minimum value of inputs
-    float max;     //Maximum value of inputs
-    float ****matrix; //4D jagged array that stores the weights and biases
+    double min;      //Minimum value of inputs
+    double max;     //Maximum value of inputs
+    double ****matrix; //4D jagged array that stores the weights and biases
                        //the neural network.
     struct Matrix* weights_low;
     struct Matrix* weights_low_gtzero;
@@ -76,16 +76,16 @@ struct NNet
     struct Interval *input_interval;
 
 
-    float *cache_equation_low;
-    float *cache_equation_up;
-    float *cache_bias_low;
-    float *cache_bias_up;
+    double *cache_equation_low;
+    double *cache_equation_up;
+    double *cache_bias_low;
+    double *cache_bias_up;
     bool cache_valid;
 
-    float *cache_equation_low_gtzero;
-    float *cache_equation_up_gtzero;
-    float *cache_bias_low_gtzero;
-    float *cache_bias_up_gtzero;
+    double *cache_equation_low_gtzero;
+    double *cache_equation_up_gtzero;
+    double *cache_bias_low_gtzero;
+    double *cache_bias_up_gtzero;
     bool cache_valid_gtzero;
 
     bool is_duplicate;
@@ -108,11 +108,11 @@ void update_equations(struct NNet *nnet, int layer, bool use_gtzero_lb);
 
 void relu_bound(struct NNet *nnet, 
                 struct Interval *input, int i, int layer, int err_row, 
-                float *low, float *up, int ignore, bool use_gtzero_lb);
+                double *low, double *up, int ignore, bool use_gtzero_lb);
 
 int relax_relu(struct NNet *nnet, 
-    float lower_bound, float upper_bound,
-    float up_lower_bound, float up_upper_bound, float low_temp_lower_gt,
+    double lower_bound, double upper_bound,
+    double up_lower_bound, double up_upper_bound, double low_temp_lower_gt,
     struct Interval *input, int i, int layer,
     int *err_row, int *wrong_node_length, int *wcnt, bool ignore_invalid_output);
 
@@ -127,9 +127,9 @@ struct NNet *load_conv_network(const char *filename, int img);
 struct NNet *duplicate_conv_network(struct NNet *orig_nnet);
 struct NNet *reset_conv_network(struct NNet *nnet);
 
-void load_inputs(int img, int inputSize, float *input);
+void load_inputs(int img, int inputSize, double *input);
 
-void initialize_input_interval(struct NNet *nnet, int img, int inputSize, float *input, float *u, float *l);
+void initialize_input_interval(struct NNet *nnet, int img, int inputSize, double *input, double *u, double *l);
 
 /*  
  * Uses for loop to calculate the output
@@ -149,42 +149,42 @@ int forward_prop_interval(struct NNet *network, struct Interval *input, struct I
 */
 int forward_prop_interval_equation(struct NNet *network, struct Interval *input,
                                      struct Interval *output, struct Interval *grad,
-                                     float *equation_upper, float *equation_lower,
-                                     float *new_equation_upper, float *new_equation_lower);
+                                     double *equation_upper, double *equation_lower,
+                                     double *new_equation_upper, double *new_equation_lower);
 
 
 int forward_prop_interval_equation2(struct NNet *network, struct Interval *input,
                                      struct Interval *output, struct Interval *grad,
-                                     float *equation_upper, float *equation_lower,
-                                     float *new_equation_upper, float *new_equation_lower);
+                                     double *equation_upper, double *equation_lower,
+                                     double *new_equation_upper, double *new_equation_lower);
 
 int forward_prop_interval_equation_linear(struct NNet *network, struct Interval *input,
-                                     struct Interval *output, float *grad,
-                                     float *equation_upper, float *equation_lower,
-                                     float *new_equation_upper, float *new_equation_lower,
+                                     struct Interval *output, double *grad,
+                                     double *equation_upper, double *equation_lower,
+                                     double *new_equation_upper, double *new_equation_lower,
                                      int *wrong_nodes, int *wrong_node_length,
-                                     float *wrong_up_s_up, float *wrong_up_s_low,
-                                     float *wrong_low_s_up, float *wrong_low_s_low);
+                                     double *wrong_up_s_up, double *wrong_up_s_low,
+                                     double *wrong_low_s_up, double *wrong_low_s_low);
 
 int forward_prop_interval_equation_linear2(struct NNet *network, struct Interval *input,
-                                     struct Interval *output, float *grad,
-                                     float *equation_upper, float *equation_lower,
-                                     float *new_equation_upper, float *new_equation_lower,
+                                     struct Interval *output, double *grad,
+                                     double *equation_upper, double *equation_lower,
+                                     double *new_equation_upper, double *new_equation_lower,
                                      int *wrong_nodes, int *wrong_node_length,
-                                     float *wrong_up_s_up, float *wrong_up_s_low,
-                                     float *wrong_low_s_up, float *wrong_low_s_low);
+                                     double *wrong_up_s_up, double *wrong_up_s_low,
+                                     double *wrong_low_s_up, double *wrong_low_s_low);
 
-void sort(float *array, int num, int *ind);
+void sort(double *array, int num, int *ind);
 
 void sort_layers(int numLayers, int*layerSizes, int wrong_node_length, int*wrong_nodes);
 
 void set_input_constraints(struct Interval *input, lprec *lp, int *rule_num, int inputSize);
 
-void set_node_constraints(lprec *lp, float *equation, float bias, int start, int *rule_num, int sig, int inputSize);
+void set_node_constraints(lprec *lp, double *equation, double bias, int start, int *rule_num, int sig, int inputSize);
 
-float set_output_constraints(lprec *lp, float *equation, float bias, int start, int *rule_num, int inputSize, int is_max, float *output, float *input_prev);
+double set_output_constraints(lprec *lp, double *equation, double bias, int start, int *rule_num, int inputSize, int is_max, double *output, double *input_prev);
 
-float set_wrong_node_constraints(lprec *lp, float *equation, int start, int *rule_num, int inputSize, int is_max, float *output);
+double set_wrong_node_constraints(lprec *lp, double *equation, int start, int *rule_num, int inputSize, int is_max, double *output);
 
 void destroy_network(struct NNet *network);
 
@@ -201,22 +201,22 @@ void normalize_input_interval(struct NNet *nnet, struct Interval *input);
  * The back prop to calculate the gradient
  * 0.000249 sec for one run with one core
 */
-void backward_prop(struct NNet *nnet, float *grad, int R[][nnet->maxLayerSize]);
+void backward_prop(struct NNet *nnet, double *grad, int R[][nnet->maxLayerSize]);
 
-void backward_prop_conv(struct NNet *nnet, float *grad, int R[][nnet->maxLayerSize]);
+void backward_prop_conv(struct NNet *nnet, double *grad, int R[][nnet->maxLayerSize]);
 
 void backward_prop_old(struct NNet *nnet, struct Interval *grad, int R[][nnet->maxLayerSize]);
 
 /*
 int forward_prop_interval_equation_linear_try(struct NNet *network, struct Interval *input,
-                                     struct Interval *output, float *grad,
-                                     float *equation, float *equation_err,
-                                     float *new_equation, float *new_equation_err,
+                                     struct Interval *output, double *grad,
+                                     double *equation, double *equation_err,
+                                     double *new_equation, double *new_equation_err,
                                      int *wrong_nodes, int *wrong_node_length,
-                                     float *wrong_up_s_up, float *wrong_up_s_low,
-                                     float *wrong_low_s_up, float *wrong_low_s_low);
+                                     double *wrong_up_s_up, double *wrong_up_s_low,
+                                     double *wrong_low_s_up, double *wrong_low_s_low);
 */
 void forward_prop_interval_equation_linear_conv(struct NNet *network, struct Interval *input,
-                                     struct Interval *output, float *grad,
+                                     struct Interval *output, double *grad,
                                      int *wrong_nodes, int *wrong_node_length,
                                      int *full_wrong_node_length);

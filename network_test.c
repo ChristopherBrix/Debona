@@ -128,7 +128,7 @@ int main( int argc, char *argv[]){
     int can_t_prove_list[image_length];
     memset(can_t_prove_list, 0, sizeof(int)*image_length);
 
-    float avg_wrong_length = 0.0;
+    double avg_wrong_length = 0.0;
     
     for(int img=image_start; img<image_start+image_length; img++){
         gettimeofday(&start, NULL);
@@ -144,7 +144,7 @@ int main( int argc, char *argv[]){
         int inputSize    = nnet->inputSize;
         int outputSize   = nnet->outputSize;
 
-        float u[inputSize+1], l[inputSize+1], input_prev[inputSize];
+        double u[inputSize+1], l[inputSize+1], input_prev[inputSize];
         struct Matrix input_prev_matrix = {input_prev, 1, inputSize};
 
         struct Matrix input_upper = {u,1,nnet->inputSize+1};
@@ -160,10 +160,10 @@ int main( int argc, char *argv[]){
 
         nnet->input_interval = &input_interval;
 
-        float o[nnet->outputSize];
+        double o[nnet->outputSize];
         struct Matrix output = {o, outputSize, 1};
         
-        float o_upper[nnet->outputSize], o_lower[nnet->outputSize];
+        double o_upper[nnet->outputSize], o_lower[nnet->outputSize];
         struct Interval output_interval = {
                     (struct Matrix){o_lower, outputSize, 1},
                     (struct Matrix){o_upper, outputSize, 1}
@@ -202,8 +202,8 @@ int main( int argc, char *argv[]){
         int wrong_nodes_map[total_nodes];
         memset(wrong_nodes_map,0,sizeof(int)*total_nodes);
 
-        float grad[total_nodes];
-        memset(grad, 0, sizeof(float)*total_nodes);
+        double grad[total_nodes];
+        memset(grad, 0, sizeof(double)*total_nodes);
 
         int wrong_node_length = 0;
         int full_wrong_node_length = 0;
@@ -287,8 +287,8 @@ int main( int argc, char *argv[]){
         //is_overlap = check_functions(nnet, &output_interval);
         
         gettimeofday(&finish, NULL);
-        time_spent = ((float)(finish.tv_sec-start.tv_sec)*1000000 +\
-                (float)(finish.tv_usec-start.tv_usec)) / 1000000;
+        time_spent = ((double)(finish.tv_sec-start.tv_sec)*1000000 +\
+                (double)(finish.tv_usec-start.tv_usec)) / 1000000;
         total_time_spent += time_spent;
 
         if(!adv_found && !analysis_uncertain){
@@ -323,7 +323,7 @@ int main( int argc, char *argv[]){
 
     }
 
-    avg_wrong_length /= (float)image_length;
+    avg_wrong_length /= (double)image_length;
 
     printf("Final analysis result: %d adv, %d non-adv, %d undetermined \n", 
         adv_num, non_adv, no_prove);

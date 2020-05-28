@@ -54,7 +54,7 @@ struct direct_run_check_conv_lp_args
 	struct NNet *nnet;
 	struct Interval *input;
 	bool *output_map;
-	float *grad;
+	double *grad;
 	int *sigs;
 	int target;
 	lprec *lp;
@@ -88,16 +88,16 @@ int search_queue(int *wrong_nodes, int *wrong_node_length, int node_cnt);
 
 
 bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
-	struct Interval *input, bool *output_map, float *grad, int *wrong_nodes,
+	struct Interval *input, bool *output_map, double *grad, int *wrong_nodes,
 	int *wrong_node_length, int *sigs, int target, lprec *lp,
 	int *rule_num);
 
 int direct_run_check_conv_lp(struct NNet *nnet, struct Interval *input,
-	bool *output_map, float *grad, int *sigs, int target, lprec *lp,
+	bool *output_map, double *grad, int *sigs, int target, lprec *lp,
 	int *rule_num, int depth, struct timeval start_time,
 	bool increment_global_counter);
 
 int split_interval_conv_lp(struct NNet *nnet, struct Interval *input,
-	bool *output_map, float *grad, int *wrong_nodes, int *wrong_node_length,
+	bool *output_map, double *grad, int *wrong_nodes, int *wrong_node_length,
 	int *sigs, lprec *lp, int *rule_num, int depth, struct timeval start_time,
 	bool increment_global_counter);
