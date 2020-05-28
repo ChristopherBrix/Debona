@@ -253,11 +253,11 @@ void check_adv1(struct NNet* nnet, struct Matrix *adv){
         printMatrix(&output);
         for (int i = 0; i < nnet->inputSize; i++)
         {
-            if(adv->data[i] < nnet->input_interval->lower_matrix.data[i] || 
-                adv->data[i] > nnet->input_interval->upper_matrix.data[i]) {
-                printf("Invalid input (%d): %f < %f < %f not valid \n",
+            if(adv->data[i] < nnet->input_interval->lower_matrix.data[i] - 0.0000001 || 
+                adv->data[i] > nnet->input_interval->upper_matrix.data[i] + 0.0000001) {
+                printf("Invalid input (%d): %.20f < %.20f < %.20f not valid \n",
                     i, nnet->input_interval->lower_matrix.data[i], adv->data[i], nnet->input_interval->upper_matrix.data[i]);
-                exit(1);
+                //exit(1);
             }
         }
         pthread_mutex_unlock(&lock);
