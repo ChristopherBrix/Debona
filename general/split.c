@@ -408,6 +408,7 @@ int sym_relu_lp(struct Interval *input,
 
         if(R[layer][i] >= 10) {
             wrong_nodes_map[(*wrong_node_length) - 1] = *node_cnt;
+            R[layer][i] = 1;
         }
 
         *node_cnt += 1;
@@ -539,7 +540,11 @@ bool forward_prop_interval_equation_conv_lp(struct NNet *nnet,
     }
 
     //printf("sig:%d, need_to_split:%d\n",sig, need_to_split );
-
+    int total_nodes = 0;
+    for(int layer=1;layer<numLayers;layer++){
+        total_nodes += nnet->layerSizes[layer];
+    }
+    memset(grad, 0, sizeof(float)*total_nodes);
     backward_prop_conv(nnet, grad, R);
 
     return need_to_split;

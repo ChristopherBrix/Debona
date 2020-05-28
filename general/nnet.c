@@ -1534,6 +1534,7 @@ int sym_relu_layer(struct Interval *input,
 
             if(R[layer][i] > 10) {
                 wrong_nodes_map[(*wrong_node_length) - 1] = *node_cnt;
+                R[layer][i] = 1;
             }
 
             tempVal_upper=0.0, tempVal_lower=0.0;
