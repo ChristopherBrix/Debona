@@ -1,4 +1,4 @@
-# Debona (NIPS'20, under review)
+# Debona (NeurIPS'20, under review)
 Neural networks commonly suffer from a vulnerability to adversarial attacks, where small modifications to the input cause the network to misclassify examples. In saftey-critical applications, formal verification of safety properties may be necessary to guarantee robustness against such attacks.
 
 Debona (see [Debona: Decoupled Boundary Network Analysis for Tighter Bounds and Faster Adversarial Robustness Proofs](https://arxiv.org/abs/2006.09040)) is an improved version of [Neurify](https://github.com/tcwangshiqi-columbia/Neurify) (see [Efficient Formal Safety Analysis of Neural Networks](https://arxiv.org/abs/1809.08098)). It utilizes symbolic linear relaxation to compute tight overestimations for the bounds of the network nodes.
