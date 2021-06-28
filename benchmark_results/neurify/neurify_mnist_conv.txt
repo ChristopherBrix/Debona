@@ -1,0 +1,300 @@
+Benchmarking with epsilon = 1:
+
+Final result of input 0: Safe, time spent: 0.61
+Final result of input 1: Safe, time spent: 0.61
+Final result of input 2: Safe, time spent: 0.59
+Final result of input 3: Safe, time spent: 0.61
+Final result of input 4: Safe, time spent: 0.59
+Final result of input 5: Safe, time spent: 0.60
+Final result of input 6: Safe, time spent: 0.61
+Final result of input 7: Safe, time spent: 0.61
+Final result of input 8: Safe, time spent: 0.62
+Final result of input 9: Safe, time spent: 0.60
+Final result of input 10: Safe, time spent: 0.61
+Final result of input 11: Safe, time spent: 0.60
+Final result of input 12: Safe, time spent: 0.61
+Final result of input 13: Unsafe, time spent: 0.75
+Final result of input 14: Safe, time spent: 0.59
+Final result of input 15: Safe, time spent: 0.59
+Final result of input 16: Safe, time spent: 0.61
+Final result of input 17: Safe, time spent: 0.61
+Final result of input 18: Safe, time spent: 0.61
+Final result of input 19: Safe, time spent: 0.62
+Final result of input 20: Safe, time spent: 0.60
+Final result of input 21: Safe, time spent: 0.61
+Final result of input 22: Safe, time spent: 0.61
+Final result of input 23: Safe, time spent: 0.60
+Final result of input 24: Safe, time spent: 0.60
+Final result of input 25: Safe, time spent: 0.62
+Final result of input 26: Safe, time spent: 0.61
+Final result of input 27: Safe, time spent: 0.61
+Final result of input 28: Safe, time spent: 0.61
+Final result of input 29: Safe, time spent: 0.60
+Final result of input 30: Safe, time spent: 0.60
+Final result of input 31: Safe, time spent: 0.60
+Final result of input 32: Safe, time spent: 0.60
+Final result of input 33: Safe, time spent: 0.60
+Final result of input 34: Safe, time spent: 0.59
+Final result of input 35: Safe, time spent: 0.59
+Final result of input 36: Safe, time spent: 0.61
+Final result of input 37: Safe, time spent: 0.60
+Final result of input 38: Safe, time spent: 0.60
+Final result of input 39: Safe, time spent: 0.61
+Final result of input 40: Safe, time spent: 0.60
+Final result of input 41: Safe, time spent: 0.60
+Final result of input 42: Safe, time spent: 0.62
+Final result of input 43: Safe, time spent: 0.60
+Final result of input 44: Safe, time spent: 0.61
+Final result of input 45: Safe, time spent: 0.62
+Final result of input 46: Safe, time spent: 0.61
+Final result of input 47: Safe, time spent: 0.61
+Final result of input 48: Safe, time spent: 0.61
+Final result of input 49: Safe, time spent: 0.67
+
+Total time used: 30.45 
+Safe images: 49
+Unsafe images: 1
+Undecided images: 0
+Undeflow images: 0
+Manually terminated images: 0
+
+Benchmarking with epsilon = 2:
+
+Final result of input 0: Safe, time spent: 0.79
+Final result of input 1: Safe, time spent: 0.79
+Final result of input 2: Safe, time spent: 0.75
+Final result of input 3: Safe, time spent: 0.81
+Final result of input 4: Safe, time spent: 0.76
+Final result of input 5: Safe, time spent: 0.79
+Final result of input 6: Safe, time spent: 0.79
+Final result of input 7: Safe, time spent: 0.79
+Final result of input 8: Safe, time spent: 0.84
+Final result of input 9: Safe, time spent: 0.76
+Final result of input 10: Safe, time spent: 0.79
+Final result of input 11: Safe, time spent: 0.80
+Final result of input 12: Safe, time spent: 0.82
+Final result of input 13: Unsafe, time spent: 0.91
+Final result of input 14: Safe, time spent: 0.76
+Final result of input 15: Safe, time spent: 0.76
+Final result of input 16: Safe, time spent: 0.79
+Final result of input 17: Safe, time spent: 0.81
+Final result of input 18: Safe, time spent: 0.79
+Final result of input 19: Safe, time spent: 0.84
+Final result of input 20: Safe, time spent: 2.40
+Final result of input 21: Safe, time spent: 0.80
+Final result of input 22: Safe, time spent: 0.80
+Final result of input 23: Safe, time spent: 0.77
+Final result of input 24: Safe, time spent: 0.78
+Final result of input 25: Safe, time spent: 0.83
+Final result of input 26: Safe, time spent: 0.83
+Final result of input 27: Safe, time spent: 2.47
+Final result of input 28: Safe, time spent: 0.78
+Final result of input 29: Safe, time spent: 0.76
+Final result of input 30: Safe, time spent: 0.78
+Final result of input 31: Safe, time spent: 0.76
+Final result of input 32: Safe, time spent: 0.78
+Final result of input 33: Safe, time spent: 0.76
+Final result of input 34: Safe, time spent: 0.75
+Final result of input 35: Safe, time spent: 0.74
+Final result of input 36: Safe, time spent: 0.79
+Final result of input 37: Safe, time spent: 0.77
+Final result of input 38: Safe, time spent: 0.76
+Final result of input 39: Safe, time spent: 0.81
+Final result of input 40: Safe, time spent: 0.78
+Final result of input 41: Safe, time spent: 0.77
+Final result of input 42: Safe, time spent: 0.82
+Final result of input 43: Safe, time spent: 0.78
+Final result of input 44: Safe, time spent: 0.79
+Final result of input 45: Safe, time spent: 0.83
+Final result of input 46: Safe, time spent: 0.77
+Final result of input 47: Safe, time spent: 0.79
+Final result of input 48: Safe, time spent: 0.82
+Final result of input 49: Safe, time spent: 0.80
+
+Total time used: 42.81 
+Safe images: 49
+Unsafe images: 1
+Undecided images: 0
+Undeflow images: 0
+Manually terminated images: 0
+
+Benchmarking with epsilon = 5:
+
+Final result of input 0: Safe, time spent: 0.98
+Final result of input 1: Safe, time spent: 1.00
+Final result of input 2: Safe, time spent: 2.19
+Final result of input 3: Underflow, time spent: 47.13
+Final result of input 4: Safe, time spent: 0.93
+Final result of input 5: Underflow, time spent: 166.40
+Final result of input 6: Safe, time spent: 1.13
+Final result of input 7: Safe, time spent: 1.20
+Final result of input 8: Safe, time spent: 37.74
+Final result of input 9: Safe, time spent: 0.93
+Final result of input 10: Safe, time spent: 1.12
+Final result of input 11: Safe, time spent: 0.97
+Final result of input 12: Underflow, time spent: 8.62
+Final result of input 13: Unsafe, time spent: 1.09
+Final result of input 14: Safe, time spent: 0.94
+Final result of input 15: Safe, time spent: 0.93
+Final result of input 16: Safe, time spent: 24.95
+Final result of input 17: Underflow, time spent: 42.58
+Final result of input 18: Safe, time spent: 0.99
+Final result of input 19: Underflow, time spent: 1993.94
+Final result of input 20: Safe, time spent: 0.94
+Final result of input 21: Underflow, time spent: 23.72
+Final result of input 22: Safe, time spent: 0.99
+Final result of input 23: Safe, time spent: 0.96
+Final result of input 24: Safe, time spent: 0.98
+Final result of input 25: Safe, time spent: 1.26
+Final result of input 26: Safe, time spent: 1.18
+Final result of input 27: Safe, time spent: 1.41
+Final result of input 28: Safe, time spent: 1.15
+Final result of input 29: Safe, time spent: 0.95
+Final result of input 30: Safe, time spent: 0.97
+Final result of input 31: Safe, time spent: 1.69
+Final result of input 32: Safe, time spent: 0.96
+Final result of input 33: Safe, time spent: 1.11
+Final result of input 34: Safe, time spent: 0.92
+Final result of input 35: Safe, time spent: 0.91
+Final result of input 36: Safe, time spent: 0.98
+Final result of input 37: Safe, time spent: 0.95
+Final result of input 38: Safe, time spent: 0.93
+Final result of input 39: Safe, time spent: 1.00
+Final result of input 40: Unsafe, time spent: 1.47
+Final result of input 41: Safe, time spent: 0.95
+Final result of input 42: Underflow, time spent: 10.93
+Final result of input 43: Underflow, time spent: 47.61
+Final result of input 44: Safe, time spent: 1.22
+Final result of input 45: Underflow, time spent: 1053.51
+Final result of input 46: Safe, time spent: 0.97
+Final result of input 47: Safe, time spent: 1.00
+Final result of input 48: Underflow, time spent: 95.83
+Final result of input 49: Underflow, time spent: 572.25
+
+Total time used: 4165.45 
+Safe images: 37
+Unsafe images: 2
+Undecided images: 0
+Undeflow images: 11
+Manually terminated images: 0
+
+Benchmarking with epsilon = 10:
+
+Final result of input 0: Underflow, time spent: 139.34
+Final result of input 1: Underflow, time spent: 157.81
+Final result of input 2: Underflow, time spent: 106.13
+Final result of input 3: Underflow, time spent: 174.86
+Final result of input 4: Underflow, time spent: 127.15
+Final result of input 5: Underflow, time spent: 163.37
+Final result of input 6: Underflow, time spent: 145.44
+Final result of input 7: Underflow, time spent: 140.89
+Final result of input 8: Underflow, time spent: 194.23
+Final result of input 9: Underflow, time spent: 98.60
+Final result of input 10: Underflow, time spent: 108.41
+Final result of input 11: Underflow, time spent: 147.72
+Final result of input 12: Underflow, time spent: 169.84
+Final result of input 13: Unsafe, time spent: 1.46
+Final result of input 14: Safe, time spent: 36.09
+Final result of input 15: Underflow, time spent: 23.11
+Final result of input 16: Underflow, time spent: 138.47
+Final result of input 17: Underflow, time spent: 148.53
+Final result of input 18: Underflow, time spent: 139.83
+Final result of input 19: Underflow, time spent: 196.64
+Final result of input 20: Underflow, time spent: 232.93
+Final result of input 21: Unsafe, time spent: 1.51
+Final result of input 22: Underflow, time spent: 128.15
+Final result of input 23: Underflow, time spent: 91.43
+Final result of input 24: Underflow, time spent: 131.46
+Final result of input 25: Underflow, time spent: 186.90
+Final result of input 26: Underflow, time spent: 178.91
+Final result of input 27: Underflow, time spent: 161.41
+Final result of input 28: Underflow, time spent: 132.10
+Final result of input 29: Underflow, time spent: 119.52
+Final result of input 30: Underflow, time spent: 122.04
+Final result of input 31: Underflow, time spent: 126.16
+Final result of input 32: Underflow, time spent: 124.27
+Final result of input 33: Underflow, time spent: 125.40
+Final result of input 34: Underflow, time spent: 100.18
+Final result of input 35: Underflow, time spent: 95.69
+Final result of input 36: Underflow, time spent: 129.73
+Final result of input 37: Underflow, time spent: 121.87
+Final result of input 38: Underflow, time spent: 110.71
+Final result of input 39: Underflow, time spent: 143.90
+Final result of input 40: Unsafe, time spent: 1.47
+Final result of input 41: Underflow, time spent: 113.27
+Final result of input 42: Underflow, time spent: 181.37
+Final result of input 43: Unsafe, time spent: 1.55
+Final result of input 44: Underflow, time spent: 171.76
+Final result of input 45: Underflow, time spent: 202.58
+Final result of input 46: Underflow, time spent: 104.16
+Final result of input 47: Underflow, time spent: 142.52
+Final result of input 48: Underflow, time spent: 200.15
+Final result of input 49: Underflow, time spent: 173.62
+
+Total time used: 6414.65 
+Safe images: 1
+Unsafe images: 4
+Undecided images: 0
+Undeflow images: 45
+Manually terminated images: 0
+
+Benchmarking with epsilon = 15:
+
+Final result of input 0: Underflow, time spent: 189.25
+Final result of input 1: Underflow, time spent: 195.75
+Final result of input 2: Unsafe, time spent: 1.75
+Final result of input 3: Unsafe, time spent: 5.20
+Final result of input 4: Underflow, time spent: 32.50
+Final result of input 5: Unsafe, time spent: 1.92
+Final result of input 6: Underflow, time spent: 207.81
+Final result of input 7: Underflow, time spent: 189.81
+Final result of input 8: Underflow, time spent: 208.53
+Final result of input 9: Underflow, time spent: 162.03
+Final result of input 10: Underflow, time spent: 175.04
+Final result of input 11: Underflow, time spent: 205.85
+Final result of input 12: Unsafe, time spent: 2.69
+Final result of input 13: Unsafe, time spent: 1.84
+Final result of input 14: Underflow, time spent: 163.79
+Final result of input 15: Underflow, time spent: 158.93
+Final result of input 16: Unsafe, time spent: 5.31
+Final result of input 17: Unsafe, time spent: 1.95
+Final result of input 18: Underflow, time spent: 35.96
+Final result of input 19: Underflow, time spent: 39.73
+Final result of input 20: Underflow, time spent: 22.81
+Final result of input 21: Unsafe, time spent: 1.93
+Final result of input 22: Underflow, time spent: 189.76
+Final result of input 23: Underflow, time spent: 170.92
+Final result of input 24: Underflow, time spent: 202.17
+Final result of input 25: Underflow, time spent: 211.41
+Final result of input 26: Underflow, time spent: 209.14
+Final result of input 27: Underflow, time spent: 204.24
+Final result of input 28: Underflow, time spent: 170.90
+Final result of input 29: Underflow, time spent: 188.85
+Final result of input 30: Underflow, time spent: 182.36
+Final result of input 31: Unsafe, time spent: 2.00
+Final result of input 32: Underflow, time spent: 187.28
+Final result of input 33: Underflow, time spent: 187.67
+Final result of input 34: Underflow, time spent: 170.28
+Final result of input 35: Underflow, time spent: 153.66
+Final result of input 36: Underflow, time spent: 179.23
+Final result of input 37: Underflow, time spent: 184.52
+Final result of input 38: Underflow, time spent: 181.45
+Final result of input 39: Underflow, time spent: 201.75
+Final result of input 40: Unsafe, time spent: 1.84
+Final result of input 41: Underflow, time spent: 171.23
+Final result of input 42: Underflow, time spent: 208.69
+Final result of input 43: Unsafe, time spent: 1.89
+Final result of input 44: Underflow, time spent: 209.94
+Final result of input 45: Underflow, time spent: 211.31
+Final result of input 46: Underflow, time spent: 180.48
+Final result of input 47: Underflow, time spent: 197.89
+Final result of input 48: Underflow, time spent: 211.39
+Final result of input 49: Unsafe, time spent: 1.98
+
+Total time used: 6584.60 
+Safe images: 0
+Unsafe images: 12
+Undecided images: 0
+Undeflow images: 38
+Manually terminated images: 0
+
