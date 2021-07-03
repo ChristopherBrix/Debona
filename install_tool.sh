@@ -11,6 +11,8 @@ fi
 set -e
 set -x
 
+SCRIPT_DIR=`dirname $(readlink -f $0)`
+
 sudo apt-get update
 
 sudo apt-get remove -y python2.7 python3.6
@@ -57,10 +59,8 @@ sudo mv gurobi912/ /opt/
 cd /opt/gurobi912/linux64/
 $pipenv_python setup.py install
 
-cd ~/Debona/src
+cd SCRIPT_DIR
 grbgetkey_path=`pipenv run which grbgetkey`
 echo "Please enter a valid Gurobi Licence Key: "
 read gurobi_key
 $grbgetkey_path $gurobi_key
-
-sudo apt-get install -y bc
