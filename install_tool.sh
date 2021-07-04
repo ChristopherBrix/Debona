@@ -59,7 +59,7 @@ sudo mv gurobi912/ /opt/
 cd /opt/gurobi912/linux64/
 $pipenv_python setup.py install
 
-cd $SCRIPT_DIR
+cd $SCRIPT_DIR/src
 grbgetkey_path=`pipenv run which grbgetkey`
 echo "Please enter a valid Gurobi Licence Key: "
 read gurobi_key
