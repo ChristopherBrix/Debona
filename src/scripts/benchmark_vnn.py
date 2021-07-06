@@ -73,4 +73,4 @@ if __name__ == "__main__":
         elif status == Status.Unsafe:
             f.write("violated")
         else:
-            f.write("unknown")
+            f.write("run_instance_timeout")

@@ -513,7 +513,8 @@ class ArbitraryObjective(VerificationObjective):
         potential_counter = self.potential_counter(bounds).nonzero()[0]
         output_weights = np.zeros((bounds.layer_sizes[-1], 2), dtype=float)
 
-        output_weights[potential_counter, 1] = 1
+        # we don't use them anyway, to be removed if future rewrites
+        #output_weights[potential_counter, 1] = 1
 
         return output_weights
 
@@ -565,9 +566,13 @@ class ArbitraryObjective(VerificationObjective):
             return
         else:
             potential_counter = potential_counter.reshape(-1)
+        concrete_bounds = bounds._get_concrete_bounds(-1)
+        if concrete_bounds.shape[2] >= max(potential_counter):
+            self.potential_counters = list(potential_counter)
+            return
 
-        potential_counter_sorted_idx = bounds._get_concrete_bounds(
-            -1)[1][potential_counter, 1].argsort()
+
+        potential_counter_sorted_idx = concrete_bounds[1][potential_counter, 1].argsort()
         self.potential_counters = list(
             potential_counter[potential_counter_sorted_idx])
 
