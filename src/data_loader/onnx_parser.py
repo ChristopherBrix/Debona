@@ -112,7 +112,7 @@ class ONNXParser:
                 next_i = i + 2
                 curr_input_idx = nodes[i + 1].output[0]
             else:
-                bias = np.zeros(weights.shape[0])
+                bias = np.zeros(weights.shape[1])
                 next_i = i + 1
                 curr_input_idx = node.output[0]
             layer = nn.Linear(weights.shape[0], weights.shape[1])
