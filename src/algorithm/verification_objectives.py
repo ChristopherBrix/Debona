@@ -530,7 +530,7 @@ class ArbitraryObjective(VerificationObjective):
             A generator with the loss function
         """
         # minimize all parts of the conjunction
-        return lambda y: (y[0, :] * torch.tensor(self.objectives[self.current_potential_counter, :, :-1].sum(axis=1))
+        return lambda y: (y[0, :] * torch.tensor(self.objectives[self.current_potential_counter, :, :-1].sum(axis=0))
                           ).sum(axis=0)
 
     def is_counter_example(self, y: np.array) -> bool:
