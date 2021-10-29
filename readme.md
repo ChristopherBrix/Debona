@@ -2,7 +2,7 @@
 
 This repository contains the open source version of VeriNet VeriNet toolkit for local robustness verification of feed-forward neural networks.  
 
-# Important Notice. 
+# Important Notice
 
 This version of VeriNet is outdated and should **not be used for benchmarking**; 
 for benchmarking purposes see https://github.com/vas-group-imperial/VeriNet. 
