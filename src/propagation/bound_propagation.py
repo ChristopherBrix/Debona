@@ -1,8 +1,22 @@
+from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
+from src.propagation.deep_poly_propagation import (
+    DeepPolyBackwardPropagation,
+    DeepPolyForwardPropagation,
+)
+
+
 class BoundPropagation:
-    pass
+    def __init__(self, propagation_method: AbstractDomainPropagation):
+        self.propagation_method = propagation_method
+
 
 class ForwardPropagation(BoundPropagation):
-    pass
+    # TODO: differentiate between DeepPoly and Starsets
+    def __init__(self):
+        super().__init__(DeepPolyForwardPropagation)
+
 
 class BackwardPropagation(BoundPropagation):
-    pass
+    # TODO: differentiate between DeepPoly and Starsets
+    def __init__(self):
+        super().__init__(DeepPolyBackwardPropagation)

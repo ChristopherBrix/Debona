@@ -1,4 +1,3 @@
-
 """
 Util classes for nn_bounds
 
@@ -10,7 +9,9 @@ import gurobipy as grb
 
 from enum import Enum
 from src.algorithm.lp_solver import LPSolver
-from src.algorithm.esip import ESIP
+
+# from src.algorithm.esip import ESIP
+from src.propagation.deep_poly_propagation import DeepPolyForwardPropagation as ESIP
 
 
 class Status(Enum):
@@ -72,7 +73,9 @@ class Branch:
         self._lp_solver_constraints = constraints
 
     @staticmethod
-    def add_constr_to_solver(bounds: ESIP, lp_solver: LPSolver, split: np.array) -> grb.Constr:
+    def add_constr_to_solver(
+        bounds: ESIP, lp_solver: LPSolver, split: np.array
+    ) -> grb.Constr:
 
         """
         Creates a grb constraint from the given split.
@@ -87,17 +90,28 @@ class Branch:
         """
 
         input_vars = lp_solver.input_variables.select()
-        layer, node, split_x, upper = split["layer"], split["node"], split["split_x"], split["upper"]
+        layer, node, split_x, upper = (
+            split["layer"],
+            split["node"],
+            split["split_x"],
+            split["upper"],
+        )
         symb_input_bounds = bounds.bounds_symbolic[layer - 1][node]
 
         if upper:
             constr = lp_solver.grb_solver.addConstr(
-                grb.LinExpr(symb_input_bounds[:-1], input_vars) + bounds.error[layer - 1][node][1]
-                + symb_input_bounds[-1] >= split_x)
+                grb.LinExpr(symb_input_bounds[:-1], input_vars)
+                + bounds.error[layer - 1][node][1]
+                + symb_input_bounds[-1]
+                >= split_x
+            )
         else:
             constr = lp_solver.grb_solver.addConstr(
-                grb.LinExpr(symb_input_bounds[:-1], input_vars) + bounds.error[layer - 1][node][0]
-                + symb_input_bounds[-1] <= split_x)
+                grb.LinExpr(symb_input_bounds[:-1], input_vars)
+                + bounds.error[layer - 1][node][0]
+                + symb_input_bounds[-1]
+                <= split_x
+            )
 
         lp_solver.grb_solver.update()
 
@@ -129,13 +143,23 @@ class Branch:
             split_list  : The list with splits from the old branch
         """
 
-        assert self.lp_solver_constraints is None, "Tried adding new constraints before removing old"
+        assert (
+            self.lp_solver_constraints is None
+        ), "Tried adding new constraints before removing old"
         self.lp_solver_constraints = []
 
         for split in split_list:
-            self.lp_solver_constraints.append(Branch.add_constr_to_solver(bounds, solver, split))
+            self.lp_solver_constraints.append(
+                Branch.add_constr_to_solver(bounds, solver, split)
+            )
 
-    def update_constrs(self, bounds: ESIP, solver: LPSolver, old_split_list: list, old_constr_list: list):
+    def update_constrs(
+        self,
+        bounds: ESIP,
+        solver: LPSolver,
+        old_split_list: list,
+        old_constr_list: list,
+    ):
 
         """
         Updates the constraints from the constraints of the last branch to the constraints of this branch.
@@ -151,7 +175,9 @@ class Branch:
             old_constr_list : The list with constraints from the old branch
         """
 
-        assert self.lp_solver_constraints is None, "Tried adding new constraints before removing old"
+        assert (
+            self.lp_solver_constraints is None
+        ), "Tried adding new constraints before removing old"
         self.lp_solver_constraints = []
 
         min_layer = bounds.num_layers
@@ -164,16 +190,22 @@ class Branch:
         min_layer = min(min_layer, self.split_list[self.depth - 1]["layer"])
 
         # Re-add constraints where the symbolic bounds might change due to the new constraint
-        re_add_idx = [i for i in range(self.depth - 1) if old_split_list[i]["layer"] > min_layer]
+        re_add_idx = [
+            i for i in range(self.depth - 1) if old_split_list[i]["layer"] > min_layer
+        ]
 
         for i in range(self.depth - 1):
 
             if i in re_add_idx:
 
                 solver.grb_solver.remove(old_constr_list[i])
-                old_constr_list[i] = Branch.add_constr_to_solver(bounds, solver, self.split_list[i])
+                old_constr_list[i] = Branch.add_constr_to_solver(
+                    bounds, solver, self.split_list[i]
+                )
 
             self._lp_solver_constraints.append(old_constr_list[i])
 
-        self.lp_solver_constraints.append(Branch.add_constr_to_solver(bounds, solver, self.split_list[-1]))
+        self.lp_solver_constraints.append(
+            Branch.add_constr_to_solver(bounds, solver, self.split_list[-1])
+        )
         solver.grb_solver.update()

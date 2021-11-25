@@ -1,4 +1,3 @@
-
 """
 This file contains the LPSolver part of the algorithm
 
@@ -12,13 +11,15 @@ import os
 import numpy as np
 import gurobipy as grb
 
-from src.algorithm.esip import ESIP
+from src.propagation.bound_propagation import ForwardPropagation
+
+bound_propagation = ForwardPropagation().propagation_method
 
 
 class LPSolver:
 
     """
-    The LPSolver class combines the symbolic bounds from ESIP and Gurobi LPSolver to verify properties as safe
+    The LPSolver class combines the symbolic bounds from bound_propagtion and Gurobi LPSolver to verify properties as safe
     or produce candidates for counter examples
     """
 
@@ -57,18 +58,26 @@ class LPSolver:
         """
         Initializes the Gurobi input and output variables
 
-        The default bounds on the variables are from the ESIP object. If output bounds are also given the
+        The default bounds on the variables are from the bound_propagation object. If output bounds are also given the
         these are used to refine the bounds.
         """
 
         self._remove_variables()
 
-        self._input_variables = (self._grb_solver.addVars(range(self._input_size), lb=-grb.GRB.INFINITY,
-                                                          ub=grb.GRB.INFINITY,
-                                                          vtype=grb.GRB.CONTINUOUS, name="Input"))
-        self._output_variables = (self._grb_solver.addVars(range(self._output_size), lb=-grb.GRB.INFINITY,
-                                                           ub=grb.GRB.INFINITY,
-                                                           vtype=grb.GRB.CONTINUOUS, name="Output"))
+        self._input_variables = self._grb_solver.addVars(
+            range(self._input_size),
+            lb=-grb.GRB.INFINITY,
+            ub=grb.GRB.INFINITY,
+            vtype=grb.GRB.CONTINUOUS,
+            name="Input",
+        )
+        self._output_variables = self._grb_solver.addVars(
+            range(self._output_size),
+            lb=-grb.GRB.INFINITY,
+            ub=grb.GRB.INFINITY,
+            vtype=grb.GRB.CONTINUOUS,
+            name="Output",
+        )
 
         self._grb_solver.update()
 
@@ -114,31 +123,43 @@ class LPSolver:
         elif self._grb_solver.status == 3:  # Infeasible system
             return False
         else:
-            raise UnexpectedGurobiStatusException(f"Gurobi _status: {self._grb_solver._status}")
+            raise UnexpectedGurobiStatusException(
+                f"Gurobi _status: {self._grb_solver._status}"
+            )
 
     # noinspection PyArgumentList
-    def set_variable_bounds(self, bounds: ESIP, output_bounds: np.array=None, set_input: bool=True):
+    def set_variable_bounds(
+        self,
+        bounds: bound_propagation,
+        output_bounds: np.array = None,
+        set_input: bool = True,
+    ):
 
         """
-        Sets the variable bounds using bounds from ESIP, and possibly output_bounds
+        Sets the variable bounds using bounds from bound_propagation, and possibly output_bounds
 
         Args:
-            bounds          : The ESIP object
+            bounds          : The bound_propagtion object
             output_bounds   : A Nx2 array-like structure with the lower output bounds in the first and column
-                              and upper in the second. The tightest bounds from ESIP and this array will
+                              and upper in the second. The tightest bounds from bound_propagtion and this array will
                               be used
             set_input       : If False, the input variables aren't adjusted
         """
 
         if self._input_variables is None or self._output_variables is None:
-            raise VariablesNotInitializedException("set_input_bounds() called before input variables where initialized")
+            raise VariablesNotInitializedException(
+                "set_input_bounds() called before input variables where initialized"
+            )
 
         if set_input:
             input_bounds_lower = bounds.bounds_concrete[0][:, 0]
             input_bounds_upper = bounds.bounds_concrete[0][:, 1]
 
             for node_num, var in enumerate(self._input_variables.select()):
-                var.lb, var.ub = input_bounds_lower[node_num], input_bounds_upper[node_num]
+                var.lb, var.ub = (
+                    input_bounds_lower[node_num],
+                    input_bounds_upper[node_num],
+                )
 
         output_bounds_lower = bounds.bounds_concrete[-1][:, 0].copy()
         output_bounds_upper = bounds.bounds_concrete[-1][:, 1].copy()
@@ -151,7 +172,10 @@ class LPSolver:
             output_bounds_upper[better_upper_idx] = output_bounds[better_upper_idx, 1]
 
         for node_num, var in enumerate(self._output_variables.select()):
-            var.lb, var.ub = output_bounds_lower[node_num], output_bounds_upper[node_num]
+            var.lb, var.ub = (
+                output_bounds_lower[node_num],
+                output_bounds_upper[node_num],
+            )
 
         self._grb_solver.update()
 

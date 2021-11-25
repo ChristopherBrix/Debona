@@ -1,4 +1,3 @@
-
 """
 This file contains objectives for the verification algorithms in VeriNet.
 
@@ -13,9 +12,11 @@ import numpy as np
 import gurobipy as grb
 from typing import Callable
 
-from src.algorithm.esip import ESIP
 from src.algorithm.lp_solver import LPSolver
 from src.algorithm.verinet_util import Status
+from src.propagation.bound_propagation import ForwardPropagation
+
+bound_propagation = ForwardPropagation().propagation_method
 
 
 class VerificationObjective:
@@ -25,7 +26,12 @@ class VerificationObjective:
     the loss and the termination criteria
     """
 
-    def __init__(self, input_bounds: np.array, output_bounds: np.array = None, output_size: int=None):
+    def __init__(
+        self,
+        input_bounds: np.array,
+        output_bounds: np.array = None,
+        output_size: int = None,
+    ):
 
         """
         Args:
@@ -58,7 +64,9 @@ class VerificationObjective:
         elif output_size is not None:
             self._output_size = output_size
         else:
-            raise VerificationObjectiveException("output_bounds or output_size should be given")
+            raise VerificationObjectiveException(
+                "output_bounds or output_size should be given"
+            )
 
     @property
     def input_bounds(self):
@@ -88,34 +96,38 @@ class VerificationObjective:
     def safe_classes(self):
         return self._safe_classes
 
-    def is_safe(self, bounds: ESIP) -> bool:
+    def is_safe(self, bounds: bound_propagation) -> bool:
 
         """
         Can be implemented to check if the verification problem can be determined before running the LPSolver,
         using only the calculated bounds. This will speed up the algorithm, but isn't necessary.
 
         Args:
-            bounds: The ESIP object
+            bounds: The bound_propagation object
         """
 
         return False
 
-    def output_refinement_weights(self, bounds: ESIP) -> np.array:
+    def output_refinement_weights(self, bounds: bound_propagation) -> np.array:
 
         """
         Should return an array with the importance weight of the different output for determining which output to
         split on
 
         Args:
-            bounds: The ESIP object
+            bounds: The bound_propagation object
         Returns:
             An Mx2 array (Number of outputs) with weights for each outputs lower bounds in the first column and
             upper bounds in the second column.
         """
 
-        raise NotImplementedError("output_refinement_weights() not implemented in subclass")
+        raise NotImplementedError(
+            "output_refinement_weights() not implemented in subclass"
+        )
 
-    def grad_descent_losses(self, lp_output: np.array, bounds: ESIP) -> Callable:
+    def grad_descent_losses(
+        self, lp_output: np.array, bounds: bound_propagation
+    ) -> Callable:
 
         """
         Should return the loss function for gradient descent to find counter-examples
@@ -125,7 +137,7 @@ class VerificationObjective:
 
         Args:
             lp_output   : The values of the output variables from the lp solver
-            bounds      : The ESIP object
+            bounds      : The bound_propagation object
 
         Returns:
             The loss function
@@ -145,7 +157,9 @@ class VerificationObjective:
 
         raise NotImplementedError("is_counter_example() not implemented in subclass")
 
-    def initial_settings(self, solver: LPSolver, bounds: ESIP, safe_classes: list):
+    def initial_settings(
+        self, solver: LPSolver, bounds: bound_propagation, safe_classes: list
+    ):
 
         """
         Should do initial setup and adjust lp solver constraints.
@@ -156,14 +170,16 @@ class VerificationObjective:
 
         Args:
             solver              : The LPSolver object
-            bounds              : The ESIP object
+            bounds              : The bound_propagation object
             safe_classes        : A list of classes that have been determined as safe in previous branches
         """
 
         raise NotImplementedError("initial_settings() not implemented in subclass")
 
     # noinspection PyTypeChecker
-    def configure_next_potential_counter(self, solver: LPSolver, bounds: ESIP) -> bool:
+    def configure_next_potential_counter(
+        self, solver: LPSolver, bounds: bound_propagation
+    ) -> bool:
 
         """
         Should configure the LPSolver for the next potential counter in the same split.
@@ -176,10 +192,12 @@ class VerificationObjective:
 
         Args:
             solver              : The LPSolver object
-            bounds              : The ESIP object
+            bounds              : The bound_propagation object
         """
 
-        raise NotImplementedError("configure_next_potential_counter() not implemented in subclass")
+        raise NotImplementedError(
+            "configure_next_potential_counter() not implemented in subclass"
+        )
 
     def finished_potential_counter(self, solver: LPSolver, status: Status):
 
@@ -226,8 +244,13 @@ class LocalRobustnessObjective(VerificationObjective):
     Used to calculate the loss and termination criteria for local robustness properties.
     """
 
-    def __init__(self, correct_class: int, input_bounds: np.array, output_bounds: np.array=None,
-                 output_size: int=None):
+    def __init__(
+        self,
+        correct_class: int,
+        input_bounds: np.array,
+        output_bounds: np.array = None,
+        output_size: int = None,
+    ):
 
         """
         Args:
@@ -247,31 +270,33 @@ class LocalRobustnessObjective(VerificationObjective):
         self.potential_counters = []
         self.current_potential_counter = None
 
-    def is_safe(self, bounds: ESIP) -> bool:
+    def is_safe(self, bounds: bound_propagation) -> bool:
 
         """
         Returns true if the correct class minimum value is larger than all other classes classes maximum
 
         Args:
-            bounds: The ESIP object
+            bounds: The bound_propagation object
         """
 
         return self.potential_counter(bounds).sum() == 0
 
     # noinspection PyUnresolvedReferences
-    def potential_counter(self, bounds: ESIP) -> np.array:
+    def potential_counter(self, bounds: bound_propagation) -> np.array:
 
         """
         Finds the classes that are potential counter examples.
 
         Args:
-            bounds: The ESIP object
+            bounds: The bound_propagation object
         Returns:
             A boolean array, where index i is true if class
         """
 
-        potential_counter = (bounds.bounds_concrete[-1][:, 1] >=
-                             bounds.bounds_concrete[-1][self.correct_class, 0])
+        potential_counter = (
+            bounds.bounds_concrete[-1][:, 1]
+            >= bounds.bounds_concrete[-1][self.correct_class, 0]
+        )
 
         potential_counter[self.correct_class] = 0
         for safe_class in self.safe_classes:
@@ -280,7 +305,7 @@ class LocalRobustnessObjective(VerificationObjective):
         return potential_counter
 
     # noinspection PyUnresolvedReferences
-    def output_refinement_weights(self, bounds: ESIP) -> np.array:
+    def output_refinement_weights(self, bounds: bound_propagation) -> np.array:
 
         """
         Returns an array with the importance weights for refinement
@@ -290,7 +315,7 @@ class LocalRobustnessObjective(VerificationObjective):
         the correct class will affect all potential adversarial classes. The other weights are 0.
 
         Args:
-            bounds: The ESIP object
+            bounds: The bound_propagation object
         Returns:
             An Mx2 array (Number of outputs) with weights for each outputs lower bounds in the first column and
             upper bounds in the second column.
@@ -305,14 +330,16 @@ class LocalRobustnessObjective(VerificationObjective):
 
         return output_weights
 
-    def grad_descent_losses(self, lp_output: torch.Tensor, bounds: ESIP) -> Callable:
+    def grad_descent_losses(
+        self, lp_output: torch.Tensor, bounds: bound_propagation
+    ) -> Callable:
 
         """
         Returns the loss function for gradient descent.
 
         Args:
             lp_output   : The values of the output variables from the lp solver
-            bounds      : The ESIP object
+            bounds      : The bound_propagation object
 
         Returns:
             A generator with the loss function
@@ -332,17 +359,19 @@ class LocalRobustnessObjective(VerificationObjective):
         return (y[0, self.correct_class] <= y[0, :]).sum() > 1
 
     # noinspection PyArgumentList,PyUnresolvedReferences
-    def initial_settings(self, solver: LPSolver, bounds: ESIP, safe_classes: list):
+    def initial_settings(
+        self, solver: LPSolver, bounds: bound_propagation, safe_classes: list
+    ):
 
         """
         Does initial setup and adjusts lp solver constraints
 
-        For this verification problem, we use ESIP to identify potential counter example and constrain the output
+        For this verification problem, we use bound_propagation to identify potential counter example and constrain the output
         upper bound in the LPSolver for the correct class
 
         Args:
             solver              : The LPSolver object
-            bounds              : The ESIP object
+            bounds              : The bound_propagation object
             safe_classes        : A list of classes that have been determined as safe in previous branches
         """
 
@@ -355,7 +384,9 @@ class LocalRobustnessObjective(VerificationObjective):
         else:
             potential_counter = potential_counter.reshape(-1)
 
-        potential_counter_sorted_idx = bounds.bounds_concrete[-1][potential_counter, 1].argsort()
+        potential_counter_sorted_idx = bounds.bounds_concrete[-1][
+            potential_counter, 1
+        ].argsort()
         self.potential_counters = list(potential_counter[potential_counter_sorted_idx])
 
         # Correct class maximum can't be larger than the maximum of target class
@@ -363,7 +394,9 @@ class LocalRobustnessObjective(VerificationObjective):
         if potential_counter_max < solver.output_variables[self.correct_class].ub:
             solver.output_variables[self.correct_class].ub = potential_counter_max
 
-    def configure_next_potential_counter(self, solver: LPSolver, bounds: ESIP) -> bool:
+    def configure_next_potential_counter(
+        self, solver: LPSolver, bounds: bound_propagation
+    ) -> bool:
 
         """
         Configures the LPSolver for the next potential counter
@@ -372,12 +405,14 @@ class LocalRobustnessObjective(VerificationObjective):
 
         Args:
             solver              : The LPSolver object
-            bounds              : The ESIP object
+            bounds              : The bound_propagation object
         Returns:
             True if potential counter we have a potential counter, else False
         """
 
-        assert self.constraints is None, "Tried adding new constraints before removing old"
+        assert (
+            self.constraints is None
+        ), "Tried adding new constraints before removing old"
 
         if len(self.potential_counters) > 0:
 
@@ -388,14 +423,18 @@ class LocalRobustnessObjective(VerificationObjective):
             input_variables = solver.input_variables.select()
             bounds_symbolic = bounds.bounds_symbolic[-1]
 
-            eq = (bounds_symbolic[self.current_potential_counter, :] -
-                  bounds_symbolic[self.correct_class, :])
+            eq = (
+                bounds_symbolic[self.current_potential_counter, :]
+                - bounds_symbolic[self.correct_class, :]
+            )
 
-            error = (bounds.error_matrix[-1][self.current_potential_counter, :] -
-                     bounds.error_matrix[-1][self.correct_class, :])
+            error = (
+                bounds.error_matrix[-1][self.current_potential_counter, :]
+                - bounds.error_matrix[-1][self.correct_class, :]
+            )
 
             eq[-1] += np.sum(error[error > 0])
-            constr = (grb.LinExpr(eq[:-1], input_variables) + eq[-1] >= 0)
+            constr = grb.LinExpr(eq[:-1], input_variables) + eq[-1] >= 0
 
             self.constraints.append(solver.grb_solver.addConstr(constr))
 
