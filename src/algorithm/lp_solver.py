@@ -11,9 +11,7 @@ import os
 import numpy as np
 import gurobipy as grb
 
-from src.propagation.bound_propagation import ForwardPropagation
-
-bound_propagation = ForwardPropagation().propagation_method
+from src.propagation.bound_propagation import bound_propagation
 
 
 class LPSolver:

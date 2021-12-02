@@ -18,9 +18,7 @@ from src.algorithm.lp_solver import LPSolver
 from src.propagation.deep_poly_propagation import BoundsException
 from src.algorithm.verification_objectives import VerificationObjective
 from src.algorithm.verinet_util import Status, Branch
-from src.propagation.bound_propagation import ForwardPropagation
-
-bound_propagation = ForwardPropagation().propagation_method
+from src.propagation.bound_propagation import bound_propagation
 
 
 class VeriNetWorker:

@@ -14,9 +14,7 @@ from typing import Callable
 
 from src.algorithm.lp_solver import LPSolver
 from src.algorithm.verinet_util import Status
-from src.propagation.bound_propagation import ForwardPropagation
-
-bound_propagation = ForwardPropagation().propagation_method
+from src.propagation.bound_propagation import bound_propagation
 
 
 class VerificationObjective:
