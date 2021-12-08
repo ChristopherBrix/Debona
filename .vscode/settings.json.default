@@ -1,0 +1,30 @@
+{
+    "python.formatting.provider": "black",
+    "python.linting.flake8Enabled": true,
+    "python.linting.enabled": true,
+    "python.linting.flake8Args": [
+        "--config=src/setup.cfg"
+    ],
+    "python.linting.pylintArgs": [
+        "--rcfile=src/setup.cfg",
+        "--disable=F0401",
+        "--load-plugins=pylint.extensions.mccabe"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceRoot}/src"
+    ],
+    "python.linting.pylintEnabled": true,
+    "editor.rulers": [
+        88
+    ],
+    "python.linting.pylintCategorySeverity.refactor": "Information",
+    "editor.formatOnPaste": false,
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyArgs": [
+        "--follow-imports=silent",
+        "--ignore-missing-imports",
+        "--show-column-numbers",
+        "--no-pretty",
+        "--config-file=src/setup.cfg"
+    ]
+}

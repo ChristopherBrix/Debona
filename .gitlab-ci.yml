@@ -1,0 +1,63 @@
+stages:
+  - setup
+  - linting
+
+variables:
+  TEST_IMAGE: $CI_REGISTRY_IMAGE:branch-$CI_COMMIT_REF_NAME
+
+build_docker:
+  stage: setup
+  image: docker:19.03.12
+  services:
+    - docker:19.03.12-dind
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t ${TEST_IMAGE} -f ${CI_PROJECT_DIR}/src/Dockerfile .
+    - docker push ${TEST_IMAGE}
+  only:
+    - merge_requests
+
+isort:
+  stage: linting
+  image: ${TEST_IMAGE}
+  script:
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run isort --check-only /dev/null
+  only:
+    - merge_requests
+
+black:
+  stage: linting
+  image: ${TEST_IMAGE}
+  script:
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run black --check --experimental-string-processing
+  only:
+    - merge_requests
+
+flake8:
+  stage: linting
+  image: ${TEST_IMAGE}
+  script:
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run flake8 --config=src/setup.cfg /dev/null
+  only:
+    - merge_requests
+
+pylint:
+  stage: linting
+  image: ${TEST_IMAGE}
+  script:
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run pylint --rcfile=src/setup.cfg /dev/null
+  only:
+    - merge_requests
+
+mypy:
+  stage: linting
+  image: ${TEST_IMAGE}
+  script:
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run mypy --config-file=src/setup.cfg /dev/null
+  only:
+    - merge_requests

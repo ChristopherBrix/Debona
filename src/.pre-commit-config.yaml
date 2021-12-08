@@ -1,0 +1,33 @@
+repos:
+- repo: local
+  hooks:
+  - id: isort
+    name: isort
+    entry: isort
+    language: system
+    files: \.py$
+  - id: black
+    name: black
+    entry: black
+    language: python
+    language_version: python3.8
+    args: ['--experimental-string-processing']
+    files: \.py$
+  - id: flake8
+    name: flake8
+    entry: flake8
+    args: ['--config=src/setup.cfg']
+    language: system
+    files: \.py$
+  - id: pylint
+    name: pylint
+    entry: pylint
+    args: ['--rcfile=src/setup.cfg']
+    language: system
+    files: \.py$
+  - id: mypy
+    name: mypy
+    entry: mypy
+    args: ['--config-file=src/setup.cfg']
+    language: system
+    files: \.py$

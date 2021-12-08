@@ -14,7 +14,7 @@ for benchmarking purposes see https://github.com/vas-group-imperial/VeriNet.
 Most dependencies can be installed via pipenv:
 
 $ cd <your_verinet_path>/VeriNet/src
-$ pipenv install
+$ pipenv install --dev
 
 (If pipenv install fails, try pipenv install torch==1.1.0 and rerun pipenv install)
 
@@ -34,6 +34,17 @@ For optimal performance, we recommend compiling Numpy from source with OpenBLAS.
 
 Install instruction can be found at: 
 https://hunseblog.wordpress.com/2014/09/15/installing-numpy-and-openblas/  
+
+### Development: Git hooks
+
+To run all configured git hooks for each commit, please run
+`pipenv run pre-commit install`. For intermediate commits, feel free to skip the checks
+by using `git commit --no-verify`, but all tests should pass before creating a merge
+request.
+
+If you are using VSCode, you may want to copy the settings in 
+`.vscode/settings.json.default` to `.vscode/settings.json`. This enables all tests after
+each save.
 
 ## IMPORTANT NOTES:
 
