@@ -22,7 +22,9 @@ isort:
   image: ${TEST_IMAGE}
   script:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run isort --check-only /dev/null
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+        | { grep "\.py$" || test $? = 1; }
+        | xargs pipenv run isort --check-only /dev/null
   only:
     - merge_requests
 
@@ -31,7 +33,9 @@ black:
   image: ${TEST_IMAGE}
   script:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run black --check --experimental-string-processing
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+        | { grep "\.py$" || test $? = 1; }
+        | xargs pipenv run black --check --experimental-string-processing
   only:
     - merge_requests
 
@@ -40,7 +44,9 @@ flake8:
   image: ${TEST_IMAGE}
   script:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run flake8 --config=src/setup.cfg /dev/null
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+        | { grep "\.py$" || test $? = 1; }
+        | xargs pipenv run flake8 --config=src/setup.cfg /dev/null
   only:
     - merge_requests
 
@@ -49,7 +55,9 @@ pylint:
   image: ${TEST_IMAGE}
   script:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run pylint --rcfile=src/setup.cfg /dev/null
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+        | { grep "\.py$" || test $? = 1; }
+        | xargs pipenv run pylint --rcfile=src/setup.cfg /dev/null
   only:
     - merge_requests
 
@@ -58,6 +66,9 @@ mypy:
   image: ${TEST_IMAGE}
   script:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME | { grep "\.py$" || test $? = 1; } | xargs pipenv run mypy --config-file=src/setup.cfg /dev/null
+    - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+        | { grep "\.py$" || test $? = 1; }
+        | xargs pipenv run mypy --config-file=src/setup.cfg --cache-dir=/cache/mypy
+            /dev/null
   only:
     - merge_requests
