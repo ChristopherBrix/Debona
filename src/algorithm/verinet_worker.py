@@ -6,25 +6,26 @@ Author: Patrick Henriksen <patrick@henriksen.as>
 
 # noinspection PyUnresolvedReferences
 import multiprocessing
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import numpy as np
-
-from typing import Callable, Optional
+import multiprocessing.synchronize
 from collections import deque
+from typing import Callable, Optional
+
+import numpy as np
+import torch
+import torch.optim as optim
 
 from src.algorithm.lp_solver import LPSolver
-from src.propagation.deep_poly_propagation import BoundsException
 from src.algorithm.verification_objectives import VerificationObjective
-from src.algorithm.verinet_util import Status, Branch
+from src.algorithm.verinet_util import Branch, Status
+from src.neural_networks.verinet_nn import VeriNetNN
 from src.propagation.bound_propagation import bound_propagation
+from src.propagation.deep_poly_propagation import BoundsException
 
 
 class VeriNetWorker:
     def __init__(
         self,
-        model: nn,
+        model: VeriNetNN,
         verification_objective: VerificationObjective,
         no_split: bool = False,
         gradient_descent_intervals: int = 5,
@@ -36,19 +37,25 @@ class VeriNetWorker:
 
         """
         Args:
-            model                           : The torch neural network, the requires_grad parameters of this model
+            model                           : The torch neural network, the
+                                              requires_grad parameters of this model
                                               might be changed.
             verification_objective          : The VerificationObjective
             no_split                        : If true no splitting is done
-            verbose                         : If true information is printed at each branch
-            gradient_descent_intervals      : Gradient descent performed to find counter example each number of
-                                              intervals. Should be >0 0.
-            gradient_descent_max_iters      : The number of iterations used in gradient descent to find a true counter
-                                              example from a _lp_solver counter example
-            gradient_descent_step           : The step size of the gradient descent used to find a true counter example
+            verbose                         : If true information is printed at each
+                                              branch
+            gradient_descent_intervals      : Gradient descent performed to find counter
+                                              example each number of intervals. Should
+                                              be >0 0.
+            gradient_descent_max_iters      : The number of iterations used in gradient
+                                              descent to find a true counter example
                                               from a _lp_solver counter example
-            gradient_descent_min_loss_change: The minimum amount of change in loss from last iteration to keep trying
-                                              gradient descent
+            gradient_descent_step           : The step size of the gradient descent used
+                                              to find a true counter example from a
+                                              _lp_solver counter example
+            gradient_descent_min_loss_change: The minimum amount of change in loss from
+                                              last iteration to keep trying gradient
+                                              descent
         """
 
         self._model = model
@@ -60,13 +67,13 @@ class VeriNetWorker:
         self._gradient_descent_min_loss_change = gradient_descent_min_loss_change
         self._verbose = verbose
 
-        self._status = Status.Undecided
-        self._counter_example: torch.Tensor = None
+        self._status = Status.UNDECIDED
+        self._counter_example: Optional[np.ndarray] = None
 
         self._lp_solver: LPSolver = None
-        self._bounds: bound_propagation = None
+        self._bounds: bound_propagation.propagation_method = None
 
-        self._branches = deque([])
+        self._branches: deque = deque([])
 
         self._set_parameters_requires_grad(model=model, requires_grad=False)
 
@@ -74,7 +81,7 @@ class VeriNetWorker:
         self.branches_explored = 0
 
     @property
-    def counter_example(self) -> torch.Tensor:
+    def counter_example(self) -> Optional[np.ndarray]:
         return self._counter_example
 
     @property
@@ -92,8 +99,10 @@ class VeriNetWorker:
         """
 
         try:
-            self._bounds = bound_propagation(
-                self._model, self._verification_objective.input_shape
+            self._bounds = bound_propagation.propagation_method(
+                self._model,
+                self._verification_objective.input_shape,
+                bound_propagation.domain,
             )
         except BoundsException as e:
             raise VeriNetException(
@@ -103,7 +112,8 @@ class VeriNetWorker:
     def _configure_lp_solver(self):
 
         """
-        Initializes the LPSolver, sets the input/output bounds and adds constraints from bound_propagation
+        Initializes the LPSolver, sets the input/output bounds and adds constraints from
+        bound_propagation
         """
 
         if self._bounds is None:
@@ -123,24 +133,28 @@ class VeriNetWorker:
     def verify(
         self,
         start_branch: Branch,
-        finished_flag: Optional[multiprocessing.Event],
+        finished_flag: Optional[multiprocessing.synchronize.Event],
         needs_branches: Optional[Callable],
         put_queue: Optional[Callable],
         queue_depth: int,
     ) -> Optional[Status]:
 
         """
-        Runs the main algorithm for verification of the given verification _verification_objective
+        Runs the main algorithm for verification of the given verification
+        _verification_objective
 
         Args:
             start_branch     : The first branch
-            finished_flag    : If set, the worker will abort. If None this parameter is disregarded.
-            needs_branches   : A callable that should return true if the queue needs more branches. If None
-                               branches will never be added to queue
-            put_queue        : A function to put new branches into the working queue. If None
-                               branches will never be added to queue
-            queue_depth      : If the depth difference between a branch and the deepest branch is more than this,
-                               the branch will be put into a queue for other processes.
+            finished_flag    : If set, the worker will abort. If None this parameter is
+                               disregarded.
+            needs_branches   : A callable that should return true if the queue needs
+                               more branches. If None branches will never be added to
+                               queue
+            put_queue        : A function to put new branches into the working queue. If
+                               None branches will never be added to queue
+            queue_depth      : If the depth difference between a branch and the deepest
+                               branch is more than this, the branch will be put into a
+                               queue for other processes.
 
         Returns:
             A Status object
@@ -153,7 +167,7 @@ class VeriNetWorker:
 
         current_branch = None
         if start_branch.forced_input_bounds is None:
-            start_branch.forced_input_bounds = self._bounds.forced_input_bounds
+            start_branch.forced_input_bounds = self._bounds.domain.forced_input_bounds
 
         self._branches.append(start_branch)
 
@@ -173,7 +187,7 @@ class VeriNetWorker:
                 put_queue(self._branches.popleft())
 
             if len(self._branches) == 0:
-                self._status = Status.Safe
+                self._status = Status.SAFE
                 break
 
             new_branch = self._branches.pop()
@@ -181,7 +195,7 @@ class VeriNetWorker:
 
             # bound_propagation failed, got invalid bounds
             if not success:
-                self._status = Status.Underflow
+                self._status = Status.UNDERFLOW
                 break
             current_branch = new_branch
 
@@ -201,18 +215,18 @@ class VeriNetWorker:
                 print(f" Depth: {current_branch.depth}, _status: {self._status}")
 
             # LPSolver found counterexample
-            if self._status == Status.Unsafe:
+            if self._status == Status.UNSAFE:
                 break
 
             # LPSolver returned safe
-            if self._status == Status.Safe:
+            if self._status == Status.SAFE:
                 continue
 
             if self._no_split:
                 break
 
             did_branch = False
-            if self._status == Status.Undecided:
+            if self._status == Status.UNDECIDED:
                 did_branch = self._branch(current_branch)
 
             if not did_branch:
@@ -220,8 +234,8 @@ class VeriNetWorker:
                     self._lp_solver, self._bounds, current_branch.safe_classes
                 )
                 self._status = self._verify_once(True, current_branch)
-                if self.status == Status.Undecided:
-                    self._status = Status.Underflow
+                if self.status == Status.UNDECIDED:
+                    self._status = Status.UNDERFLOW
                 break
 
         self._cleanup()
@@ -235,6 +249,7 @@ class VeriNetWorker:
         Args:
             do_grad_descent : If true gradient descent is done to find a counter example
             current_branch  : The current branch
+
         Returns:
             A Status object
         """
@@ -242,7 +257,7 @@ class VeriNetWorker:
         self._counter_example = None
 
         if self._verification_objective.is_safe(self._bounds):
-            return Status.Safe
+            return Status.SAFE
 
         else:
             counter = 0
@@ -253,7 +268,7 @@ class VeriNetWorker:
 
                 if not result:
                     self._verification_objective.finished_potential_counter(
-                        self._lp_solver, Status.Safe
+                        self._lp_solver, Status.SAFE
                     )
                     continue
 
@@ -272,19 +287,19 @@ class VeriNetWorker:
                 )
                 if self._counter_example is not None:
                     self._verification_objective.finished_potential_counter(
-                        self._lp_solver, Status.Undecided
+                        self._lp_solver, Status.UNDECIDED
                     )
-                    return Status.Unsafe
+                    return Status.UNSAFE
 
                 self._verification_objective.finished_potential_counter(
-                    self._lp_solver, Status.Undecided
+                    self._lp_solver, Status.UNDECIDED
                 )
 
             if counter == 0:
-                return Status.Safe
+                return Status.SAFE
             else:
                 current_branch.safe_classes = self._verification_objective.safe_classes
-                return Status.Undecided
+                return Status.UNDECIDED
 
     def init_main_loop(self):
 
@@ -299,10 +314,10 @@ class VeriNetWorker:
     # noinspection PyArgumentList,PyUnresolvedReferences
     def _grad_descent_counter_example(
         self,
-        lp_counter_example: np.array,
+        lp_counter_example: np.ndarray,
         loss_func: Callable,
         do_grad_descent: bool = True,
-    ) -> np.array:
+    ) -> Optional[np.ndarray]:
 
         """
         Runs gradient descent updating the input to find true counter examples
@@ -310,7 +325,8 @@ class VeriNetWorker:
         Args:
             lp_counter_example   : The counter example candidate from the LPSolver
             loss_func            : The loss function used for gradient descent
-            do_grad_descent      : If true, gradient descent is performed to find a counter-example
+            do_grad_descent      : If true, gradient descent is performed to find a
+                                   counter-example
 
         Returns:
             The counter example if found, else None.
@@ -335,7 +351,7 @@ class VeriNetWorker:
         old_loss = 1e10
         input_bounds = torch.Tensor(self._verification_objective.input_bounds_flat)
 
-        for i in range(self._gradient_descent_max_iters):
+        for _ in range(self._gradient_descent_max_iters):
             optimizer.zero_grad()
             loss = loss_func(y)
             loss.backward()
@@ -368,6 +384,7 @@ class VeriNetWorker:
 
         Args:
             x:  The input vector to the neural network
+
         Returns:
             logits
         """
@@ -391,6 +408,7 @@ class VeriNetWorker:
 
         Args:
             current_branch  : The current branch
+
         Returns:
             True if branching succeeded else false
         """
@@ -405,12 +423,12 @@ class VeriNetWorker:
             return False
         layer, node = split
 
-        lower = self._bounds.bounds_concrete[layer - 1][node][0]
-        upper = self._bounds.bounds_concrete[layer - 1][node][1]
-        split_x = self._bounds.mappings[layer].split_point(lower, upper)
+        lower = self._bounds.domain.bounds_concrete[layer - 1][node][0]
+        upper = self._bounds.domain.bounds_concrete[layer - 1][node][1]
+        split_x = self._bounds.domain.mappings[layer].split_point(lower, upper)
 
         self._bounds.merge_current_bounds_into_forced()
-        forced_input_bounds = self._bounds.forced_input_bounds
+        forced_input_bounds = self._bounds.domain.forced_input_bounds
 
         # Add the lower split branch
         split_forced = [arr.copy() for arr in forced_input_bounds]
@@ -445,20 +463,22 @@ class VeriNetWorker:
     def _switch_branch(self, current_branch: Branch, new_branch: Branch):
 
         """
-        Switches from current branch to the new branch updating data in bound_propagation and LPSolver
+        Switches from current branch to the new branch updating data in
+        bound_propagation and LPSolver
 
         Args:
             current_branch  : The current branch
             new_branch      : The new branch
 
         Returns:
-            False if update_nn_bounds() fails, du to invalid bounds (This can happen if the system is Safe).
+            False if update_nn_bounds() fails, du to invalid bounds (This can happen if
+            the system is SAFE).
         """
 
         assert new_branch is not None, "New branch was None"
 
         # Set forced bounds of bound_propagation
-        self._bounds.forced_input_bounds = new_branch.forced_input_bounds
+        self._bounds.domain.forced_input_bounds = new_branch.forced_input_bounds
 
         # New split, recalculate affected layers
         if current_branch is not None and new_branch.depth == current_branch.depth + 1:
@@ -468,7 +488,8 @@ class VeriNetWorker:
                 from_layer=new_branch.split_list[-1]["layer"],
             )
 
-        # Backtracking, recalculate from first differing layer, but do not recalculate input bounds to first layer
+        # Backtracking, recalculate from first differing layer, but do not recalculate
+        # input bounds to first layer
         elif (
             current_branch is not None and 0 < new_branch.depth <= current_branch.depth
         ):
@@ -526,11 +547,11 @@ class VeriNetWorker:
             self._lp_solver = None
 
         self._verification_objective = None
-        self._bounds.reset_datastruct()
+        self._bounds.domain.reset_datastruct()
         self._branches = deque([])
 
     @staticmethod
-    def _set_parameters_requires_grad(model: nn, requires_grad: bool = False):
+    def _set_parameters_requires_grad(model: VeriNetNN, requires_grad: bool = False):
 
         """
         Set the requires_grad attribute of all parameters in a torch neural network.

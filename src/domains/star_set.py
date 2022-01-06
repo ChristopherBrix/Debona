@@ -1,5 +1,12 @@
+"""
+Star Sets as described in nnenum.
+"""
+
 from src.domains.abstract_domains import AbstractDomain
 
-# TODO: what comes here?
+
+# TODO
 class StarSet(AbstractDomain):
-    pass
+    """
+    Subclass of AbstractDomain for the StarSet algorithm. Not yet implemented
+    """

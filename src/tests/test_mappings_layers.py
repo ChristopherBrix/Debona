@@ -1,4 +1,3 @@
-
 """
 Unit-tests for the layers mappings
 
@@ -11,11 +10,10 @@ import numpy as np
 import torch
 import torch.nn.functional as tf
 
-from src.algorithm.mappings.layers import FC, Conv2d, BatchNorm2d
+from src.algorithm.mappings.layers import FC, BatchNorm2d, Conv2d
 
 
 class TestMappingLayers(unittest.TestCase):
-
     def setUp(self):
 
         self.fc = FC()
@@ -107,12 +105,14 @@ class TestMappingLayers(unittest.TestCase):
         x = np.array([[-1, -2, -3, -4]]).T
 
         res = self.batch_norm_2d.propagate(x, add_bias=True)
-        gt = tf.batch_norm(input=torch.Tensor(x),
-                           running_mean=torch.Tensor(self.batch_norm_2d.params["running_mean"]),
-                           running_var=torch.Tensor(self.batch_norm_2d.params["running_var"]),
-                           weight=torch.Tensor(self.batch_norm_2d.params["weight"]),
-                           bias=torch.Tensor(self.batch_norm_2d.params["bias"]),
-                           eps=self.batch_norm_2d.params["eps"])
+        gt = tf.batch_norm(
+            input=torch.Tensor(x),
+            running_mean=torch.Tensor(self.batch_norm_2d.params["running_mean"]),
+            running_var=torch.Tensor(self.batch_norm_2d.params["running_var"]),
+            weight=torch.Tensor(self.batch_norm_2d.params["weight"]),
+            bias=torch.Tensor(self.batch_norm_2d.params["bias"]),
+            eps=self.batch_norm_2d.params["eps"],
+        )
 
         for i, val in enumerate(gt[:, 0]):
             self.assertAlmostEqual(res[i, 0], val)

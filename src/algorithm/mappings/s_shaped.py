@@ -1,13 +1,16 @@
 """
 This file contains abstractions for S-shaped activation functions (Sigmoid, Tanh ...).
 
-The abstractions are used to calculate linear relaxations, function values, and derivatives
+The abstractions are used to calculate linear relaxations, function values, and
+derivatives
 
 Author: Patrick Henriksen <patrick@henriksen.as>
 """
 
-import torch.nn as nn
+from typing import Union
+
 import numpy as np
+import torch.nn as nn
 
 from src.algorithm.mappings.abstract_mapping import AbstractMapping
 
@@ -17,14 +20,16 @@ class AbstractSShaped(AbstractMapping):
     """
     An abstract class for S-shaped activation functions.
 
-    Contains functionality common to all S-shaped functions, should be subclassed by the individual functions.
+    Contains functionality common to all S-shaped functions, should be subclassed by the
+    individual functions.
     """
 
-    def __init__(self, num_iter_min_tangent_line: int=2):
+    def __init__(self, num_iter_min_tangent_line: int = 2):
 
         """
         Args:
-            num_iter_min_tangent_line   : The number of iterations used in the iterative minimal tangent point method.
+            num_iter_min_tangent_line   : The number of iterations used in the iterative
+                                          minimal tangent point method.
         """
 
         super().__init__()
@@ -42,8 +47,8 @@ class AbstractSShaped(AbstractMapping):
     def abstracted_torch_funcs(cls) -> list:
 
         """
-        Defines the torch activation functions abstracted by this class. For example, a ReLU abstraction might have:
-        [nn.modules.activation.ReLU, nn.ReLU]
+        Defines the torch activation functions abstracted by this class. For example, a
+        ReLU abstraction might have: [nn.modules.activation.ReLU, nn.ReLU]
 
         Returns:
             A list with all torch functions that are abstracted by the current subclass.
@@ -51,19 +56,23 @@ class AbstractSShaped(AbstractMapping):
 
         return []
 
-    def propagate(self, x: np.array, add_bias: bool = True) -> np.array:
+    def propagate(self, x: np.ndarray, add_bias: bool = True) -> np.ndarray:
 
         """
-        Propagates trough the mapping (by applying the activation function or layer-operation).
+        Propagates trough the mapping (by applying the activation function or
+        layer-operation).
 
         Args:
             x           : The input as a np.array
             add_bias    : Adds bias if relevant, for example for FC and Conv layers.
+
         Returns:
             The value of the activation function at x
         """
 
-        raise NotImplementedError(f"propagate(...) not implemented in {self.__name__}")
+        raise NotImplementedError(
+            f"propagate(...) not implemented in {self.__class__.__name__}"
+        )
 
     def split_point(self, xl: float, xu: float) -> float:
 
@@ -78,24 +87,31 @@ class AbstractSShaped(AbstractMapping):
             The preferred split point
         """
 
-        raise NotImplementedError(f"split_point(...) not implemented in {self.__name__}")
+        raise NotImplementedError(
+            f"split_point(...) not implemented in {self.__class__.__name__}"
+        )
 
-    def linear_relaxation(self,
-                          lower_bounds_concrete_in: np.array,
-                          upper_bounds_concrete_in: np.array,
-                          upper: bool
-                          ) -> np.array:
+    def linear_relaxation(
+        self,
+        lower_bounds_concrete_in: np.ndarray,
+        upper_bounds_concrete_in: np.ndarray,
+        upper: bool,
+    ) -> np.ndarray:
 
         """
         Calculates the linear relaxation
 
-        The linear relaxation is a Nx2 array, where each row represents a and b of the linear equation:
-        l(x) = ax + b
+        The linear relaxation is a Nx2 array, where each row represents a and b of the
+        linear equation: l(x) = ax + b
 
         Args:
-            lower_bounds_concrete_in    : The concrete lower bounds of the input to the nodes
-            upper_bounds_concrete_in    : The concrete upper bounds of the input to the nodes
-            upper                       : If true, the upper relaxation is calculated, else the lower
+            lower_bounds_concrete_in    : The concrete lower bounds of the input to the
+                                          nodes
+            upper_bounds_concrete_in    : The concrete upper bounds of the input to the
+                                          nodes
+            upper                       : If true, the upper relaxation is calculated,
+                                          else the lower
+
         Returns:
             relaxations
         """
@@ -104,10 +120,14 @@ class AbstractSShaped(AbstractMapping):
         relaxations = np.zeros((layer_size, 2))
 
         # Calculate relaxations where the lower bound is equal to the upper
-        self._linear_relaxation_equal_bounds(lower_bounds_concrete_in, upper_bounds_concrete_in, relaxations)
+        self._linear_relaxation_equal_bounds(
+            lower_bounds_concrete_in, upper_bounds_concrete_in, relaxations
+        )
 
         # Initialize the necessary variables and datastructure
-        unequal_bounds_idx = np.argwhere((lower_bounds_concrete_in != upper_bounds_concrete_in)).squeeze()
+        unequal_bounds_idx = np.argwhere(
+            (lower_bounds_concrete_in != upper_bounds_concrete_in)
+        ).squeeze()
         unequal_bounds_idx = np.atleast_1d(unequal_bounds_idx)
 
         mixed_bounds_lower = lower_bounds_concrete_in[unequal_bounds_idx]
@@ -122,7 +142,9 @@ class AbstractSShaped(AbstractMapping):
             activation = self.propagate(mixed_bounds_upper).squeeze()
 
         # Try the line intercepting both endpoints
-        lines = self._intercept_line(mixed_bounds_lower, mixed_bounds_upper, upper=upper)
+        lines = self._intercept_line(
+            mixed_bounds_lower, mixed_bounds_upper, upper=upper
+        )
         valid = np.argwhere(lines[:, 0] <= d_activation)
         relaxations[unequal_bounds_idx[valid]] = lines[valid]
         solved[valid] = 1
@@ -130,27 +152,34 @@ class AbstractSShaped(AbstractMapping):
         # Try the optimal tangent line
         lines = self._tangent_line(mixed_bounds_lower, mixed_bounds_upper, upper=upper)
         if upper:
-            valid = np.argwhere(lines[:, 0] * mixed_bounds_lower + lines[:, 1] >= activation)
+            valid = np.argwhere(
+                lines[:, 0] * mixed_bounds_lower + lines[:, 1] >= activation
+            )
         else:
-            valid = np.argwhere(lines[:, 0] * mixed_bounds_upper + lines[:, 1] <= activation)
+            valid = np.argwhere(
+                lines[:, 0] * mixed_bounds_upper + lines[:, 1] <= activation
+            )
 
         relaxations[unequal_bounds_idx[valid]] = lines[valid]
         solved[valid] = 1
 
         # Use iterative method for the rest
-        lines = self._iterative_minimal_tangent_line(mixed_bounds_lower[solved != 1],
-                                                     mixed_bounds_upper[solved != 1],
-                                                     upper=upper)
+        lines = self._iterative_minimal_tangent_line(
+            mixed_bounds_lower[solved != 1],
+            mixed_bounds_upper[solved != 1],
+            upper=upper,
+        )
         relaxations[unequal_bounds_idx[solved != 1]] = lines
 
         return relaxations
 
-    def _tangent_line(self,
-                      lower_bounds_concrete_in: np.array,
-                      upper_bounds_concrete_in: np.array,
-                      upper: bool,
-                      tangent_point: np.array=None
-                      ) -> np.array:
+    def _tangent_line(
+        self,
+        lower_bounds_concrete_in: np.ndarray,
+        upper_bounds_concrete_in: np.ndarray,
+        upper: bool,
+        tangent_point: np.ndarray = None,
+    ) -> np.ndarray:
 
         """
         Calculates the tangent line.
@@ -158,11 +187,14 @@ class AbstractSShaped(AbstractMapping):
         Args:
             lower_bounds_concrete_in: The array with lower bounds for each node
             upper_bounds_concrete_in: The array with upper bounds for each node
-            tangent_point           : The tangent point, if None the optimal tangent point is calculated.
-            upper                   : If true, the upper relaxation is calculated, else the lower
+            tangent_point           : The tangent point, if None the optimal tangent
+                                      point is calculated.
+            upper                   : If true, the upper relaxation is calculated, else
+                                      the lower
 
         Returns:
-            An array where the first column is a and the second column is b, the parameters in l(x) = ax + b
+            An array where the first column is a and the second column is b, the
+            parameters in l(x) = ax + b
 
         Note:
             This function does not check that the tangent is a valid bound.
@@ -172,7 +204,9 @@ class AbstractSShaped(AbstractMapping):
         xl = np.atleast_1d(lower_bounds_concrete_in)
 
         if tangent_point is None:
-            tangent_point = (xu**2 - xl**2)/(2*(xu-xl))  # Optimal tangent point
+            tangent_point = (xu ** 2 - xl ** 2) / (
+                2 * (xu - xl)
+            )  # Optimal tangent point
 
         act = self.propagate(tangent_point)
         a = self.derivative(tangent_point)
@@ -182,15 +216,17 @@ class AbstractSShaped(AbstractMapping):
         num_ops = 11
         max_edge_dist = np.vstack((np.abs(xl), np.abs(xu))).max(axis=0)
         max_err = np.spacing(np.abs(a)) * max_edge_dist + np.spacing(np.abs(b))
-        outward_round = max_err * num_ops if upper else - max_err * num_ops
+        outward_round = max_err * num_ops if upper else -max_err * num_ops
         b += outward_round
 
         return np.concatenate((a[:, np.newaxis], b[:, np.newaxis]), axis=1)
 
-    def _intercept_line(self,
-                        lower_bounds_concrete_in: np.array,
-                        upper_bounds_concrete_in: np.array,
-                        upper: bool) -> np.array:
+    def _intercept_line(
+        self,
+        lower_bounds_concrete_in: np.ndarray,
+        upper_bounds_concrete_in: np.ndarray,
+        upper: bool,
+    ) -> np.ndarray:
 
         """
         Calculates the line intercepting two points of the activation function.
@@ -198,10 +234,13 @@ class AbstractSShaped(AbstractMapping):
         Args:
             lower_bounds_concrete_in: The array with lower bounds for each node
             upper_bounds_concrete_in: The array with upper bounds for each node
-            upper                   : If true, the upper relaxation is calculated, else the lower
+            upper                   : If true, the upper relaxation is calculated, else
+                                      the lower
 
         Returns:
-            An array where the first column is a and the second column is b, the parameters in l(x) = ax + b
+            An array where the first column is a and the second column is b, the
+            parameters in l(x) = ax + b
+
         """
 
         xu = np.atleast_1d(upper_bounds_concrete_in)
@@ -214,26 +253,31 @@ class AbstractSShaped(AbstractMapping):
         num_ops = 6
         max_edge_dist = np.vstack((np.abs(xl), np.abs(xu))).max(axis=0)
         max_err = np.spacing(np.abs(a)) * max_edge_dist + np.spacing(np.abs(b))
-        outward_round = max_err * num_ops if upper else - max_err * num_ops
+        outward_round = max_err * num_ops if upper else -max_err * num_ops
         b += outward_round
 
         return np.concatenate((a[:, np.newaxis], b[:, np.newaxis]), axis=1)
 
-    def _iterative_minimal_tangent_line(self,
-                                        lower_bounds_concrete_in: np.array,
-                                        upper_bounds_concrete_in: np.array,
-                                        upper: bool=True) -> np.array:
+    def _iterative_minimal_tangent_line(
+        self,
+        lower_bounds_concrete_in: np.ndarray,
+        upper_bounds_concrete_in: np.ndarray,
+        upper: bool = True,
+    ) -> np.ndarray:
 
         """
-        Uses the iterative tangent method described in the paper to find the valid tangent line coordinate closest to 0.
+        Uses the iterative tangent method described in the paper to find the valid
+        tangent line coordinate closest to 0.
 
         Args:
             lower_bounds_concrete_in: The array with lower bounds for each node
             upper_bounds_concrete_in: The array with upper bounds for each node
-            upper                   : If true a upper bound is calculated, else a lower bound is calculated
+            upper                   : If true a upper bound is calculated, else a lower
+                                      bound is calculated
 
         Returns:
-            An array where the first column is a and the second column is b, the parameters in l(x) = ax + b
+            An array where the first column is a and the second column is b, the
+            parameters in l(x) = ax + b
         """
 
         if upper:
@@ -243,39 +287,44 @@ class AbstractSShaped(AbstractMapping):
             x_bound = upper_bounds_concrete_in
             xi = lower_bounds_concrete_in
 
-        for i in range(self._num_iter_min_tangent_line):
+        for _ in range(self._num_iter_min_tangent_line):
             xi = self._update_xi(xi, x_bound, upper)
 
-        line = self._tangent_line(lower_bounds_concrete_in, upper_bounds_concrete_in, upper, xi)
+        line = self._tangent_line(
+            lower_bounds_concrete_in, upper_bounds_concrete_in, upper, xi
+        )
         return line
 
-    def derivative(self, x: np.array) -> np.array:
+    def derivative(self, x: np.ndarray) -> np.ndarray:
 
         """
         Calculates the derivative of the activation function at input x.
 
         Args:
             x: The input
+
         Returns:
             The derivative of the activation function at x
         """
 
         raise NotImplementedError("derivative(...) not implemented in subclass")
 
-    def _update_xi(self, xi: np.array, x_bound: np.array, upper: bool):
+    def _update_xi(self, xi: np.ndarray, x_bound: np.ndarray, upper: bool):
 
         """
         Calculates the new xi for the iterative tangent method.
 
         Args:
             xi              : The last tangent point calculated
-            x_bound         : The lower/upper input bound for calculating upper/lower relaxation respectively
-            upper           : If true the upper tangent is calculated, else the lower tangent is calculated
+            x_bound         : The lower/upper input bound for calculating upper/lower
+                              relaxation respectively
+            upper           : If true the upper tangent is calculated, else the lower
+                              tangent is calculated
         """
 
         raise NotImplementedError("_update_xi(...) not implemented in subclass")
 
-    def integral(self, xl: np.array, xu: np.array) -> np.array:
+    def integral(self, xl: np.ndarray, xu: np.ndarray) -> np.ndarray:
 
         """
         Calculates the integral of the activation function from xl to xu.
@@ -283,6 +332,7 @@ class AbstractSShaped(AbstractMapping):
         Args:
             xl  : The lower bound
             xu  : The upper bounds
+
         Returns:
             The integral from xl to xu
         """
@@ -291,7 +341,6 @@ class AbstractSShaped(AbstractMapping):
 
 
 class Sigmoid(AbstractSShaped):
-
     @classmethod
     def abstracted_torch_funcs(cls) -> list:
 
@@ -302,7 +351,9 @@ class Sigmoid(AbstractSShaped):
 
         return [nn.modules.activation.Sigmoid, nn.Sigmoid]
 
-    def propagate(self, x: np.array, add_bias: bool = True) -> np.array:
+    def propagate(
+        self, x: Union[np.ndarray, float], add_bias: bool = True
+    ) -> np.ndarray:
 
         """
         Propagates trough the mapping by applying the Sigmoid element-wise.
@@ -310,19 +361,21 @@ class Sigmoid(AbstractSShaped):
         Args:
             x           : The input as a np.array
             add_bias    : Adds bias if relevant, for example for FC and Conv layers.
+
         Returns:
             The value of the activation function at x
         """
 
         return 1 / (1 + np.exp(-x))
 
-    def derivative(self, x: np.array) -> np.array:
+    def derivative(self, x: np.ndarray) -> np.ndarray:
 
         """
         Calculates the derivative of the Sigmoid at input x
 
         Args:
             x: The input
+
         Returns:
             The derivative of the Sigmoid at x
         """
@@ -346,7 +399,7 @@ class Sigmoid(AbstractSShaped):
         mid = (self.propagate(xu) + self.propagate(xl)) / 2
         return -np.log((1 / mid) - 1)
 
-    def integral(self, xl: np.array, xu: np.array) -> np.array:
+    def integral(self, xl: np.ndarray, xu: np.ndarray) -> np.ndarray:
 
         """
         Returns the integral of the Sigmoid from xl to xu.
@@ -354,24 +407,32 @@ class Sigmoid(AbstractSShaped):
         Args:
             xl  : The lower bound
             xu  : The upper bounds
+
         Returns:
             The integral from xl to xu
         """
 
         return np.log(np.exp(xu) + 1) - np.log(np.exp(xl) + 1)
 
-    def _update_xi(self, xi: np.array, x_bound: np.array, upper: bool):
+    def _update_xi(self, xi: np.ndarray, x_bound: np.ndarray, upper: bool):
 
         """
-        Calculates the new xi for the iterative tangent method as described in the paper.
+        Calculates the new xi for the iterative tangent method as described in the
+        paper.
 
         Args:
             xi              : The last tangent point calculated
-            x_bound         : The lower/upper input bound for calculating upper/lower relaxation respectively
-            upper           : If true the upper tangent is calculated, else the lower tangent is calculated
+            x_bound         : The lower/upper input bound for calculating upper/lower
+                              relaxation respectively
+            upper           : If true the upper tangent is calculated, else the lower
+                              tangent is calculated
         """
 
-        root = (np.sqrt(1 - 4 * (self.propagate(xi) - self.propagate(x_bound))/(xi - x_bound)))/2.
+        root = (
+            np.sqrt(
+                1 - 4 * (self.propagate(xi) - self.propagate(x_bound)) / (xi - x_bound)
+            )
+        ) / 2.0
         if upper:
             sxi = 0.5 + root
         else:
@@ -382,7 +443,6 @@ class Sigmoid(AbstractSShaped):
 
 
 class Tanh(AbstractSShaped):
-
     @classmethod
     def abstracted_torch_funcs(cls) -> list:
 
@@ -393,7 +453,9 @@ class Tanh(AbstractSShaped):
 
         return [nn.modules.activation.Tanh, nn.Tanh]
 
-    def propagate(self, x: np.array, add_bias: bool = True) -> np.array:
+    def propagate(
+        self, x: Union[np.ndarray, float], add_bias: bool = True
+    ) -> np.ndarray:
 
         """
         Propagates trough the mapping by applying the Tanh element-wise
@@ -401,19 +463,21 @@ class Tanh(AbstractSShaped):
         Args:
             x           : The input as a np.array
             add_bias    : Adds bias if relevant, for example for FC and Conv layers.
+
         Returns:
             The value of the activation function at x
         """
 
         return np.tanh(x)
 
-    def derivative(self, x: np.array) -> np.array:
+    def derivative(self, x: np.ndarray) -> np.ndarray:
 
         """
         Calculates the derivative of the Tanh at input x
 
         Args:
             x: The input
+
         Returns:
             The derivative of the Tanh at x
         """
@@ -436,7 +500,7 @@ class Tanh(AbstractSShaped):
         mid = (self.propagate(xu) + self.propagate(xl)) / 2
         return 0.5 * np.log((1 + mid) / (1 - mid))
 
-    def integral(self, xl: np.array, xu: np.array) -> np.array:
+    def integral(self, xl: np.ndarray, xu: np.ndarray) -> np.ndarray:
 
         """
         Returns the integral of the Tanh from xl to xu.
@@ -444,28 +508,36 @@ class Tanh(AbstractSShaped):
         Args:
             xl  : The lower bound
             xu  : The upper bounds
+
         Returns:
             The integral from xl to xu
         """
 
-        return np.log(0.5*(np.exp(-xu) + np.exp(xu))) - np.log(0.5*(np.exp(-xl) + np.exp(xl)))
+        return np.log(0.5 * (np.exp(-xu) + np.exp(xu))) - np.log(
+            0.5 * (np.exp(-xl) + np.exp(xl))
+        )
 
-    def _update_xi(self, xi: np.array, x_bound: np.array, upper: bool):
+    def _update_xi(self, xi: np.ndarray, x_bound: np.ndarray, upper: bool):
 
         """
-        Calculates the new xi for the iterative tangent method as described in the paper.
+        Calculates the new xi for the iterative tangent method as described in the
+        paper.
 
         Args:
             xi              : The last tangent point calculated
-            x_bound         : The lower/upper input bound for calculating upper/lower relaxation respectively
-            upper           : If true the upper tangent is calculated, else the lower tangent is calculated
+            x_bound         : The lower/upper input bound for calculating upper/lower
+                              relaxation respectively
+            upper           : If true the upper tangent is calculated, else the lower
+                              tangent is calculated
         """
 
-        root = np.sqrt(1 - (self.propagate(xi) - self.propagate(x_bound)) / (xi - x_bound))
+        root = np.sqrt(
+            1 - (self.propagate(xi) - self.propagate(x_bound)) / (xi - x_bound)
+        )
         if upper:
             sxi = root
         else:
-            sxi = - root
+            sxi = -root
         new_xi = 0.5 * np.log((1 + sxi) / (1 - sxi))
 
         return new_xi
@@ -474,7 +546,8 @@ class Tanh(AbstractSShaped):
 class SigmoidNaive(AbstractMapping):
 
     """
-    OBS: This class is not used, and only kept for benchmarking purposes, use SigmoidAbstraction() instead.
+    OBS: This class is not used, and only kept for benchmarking purposes, use
+    SigmoidAbstraction() instead.
     """
 
     @property
@@ -495,7 +568,9 @@ class SigmoidNaive(AbstractMapping):
 
         return []  # Not used, see SigmoidAbstraction() instead.
 
-    def propagate(self, x: np.array, add_bias: bool = True) -> np.array:
+    def propagate(
+        self, x: Union[np.ndarray, float], _add_bias: bool = True
+    ) -> np.ndarray:
 
         """
         Propagates trough the mapping by applying the Sigmoid element-wise.
@@ -503,6 +578,7 @@ class SigmoidNaive(AbstractMapping):
         Args:
             x           : The input as a np.array
             add_bias    : Adds bias if relevant, for example for FC and Conv layers.
+
         Returns:
             The value of the activation function at x
         """
@@ -512,8 +588,8 @@ class SigmoidNaive(AbstractMapping):
     def split_point(self, xl: float, xu: float):
 
         """
-        Returns the preferred split point for branching, which is the input value such that the output is in the middle
-        of the minima and maxima.
+        Returns the preferred split point for branching, which is the input value such
+        that the output is in the middle of the minima and maxima.
 
         Args:
             xl  : The lower bound on the input
@@ -526,22 +602,30 @@ class SigmoidNaive(AbstractMapping):
         mid = (self.propagate(xu) + self.propagate(xl)) / 2
         return -np.log((1 / mid) - 1)
 
-    def linear_relaxation(self, lower_bounds_concrete_in: np.array, upper_bounds_concrete_in: np.array,
-                          upper: bool) -> np.array:
+    def linear_relaxation(
+        self,
+        lower_bounds_concrete_in: np.ndarray,
+        upper_bounds_concrete_in: np.ndarray,
+        upper: bool,
+    ) -> np.ndarray:
 
         """
         Calculates the linear relaxation
 
-        The linear relaxation is a Nx2 array, where each row represents a and b of the linear equation:
-        l(x) = ax + b.
+        The linear relaxation is a Nx2 array, where each row represents a and b of the
+        linear equation: l(x) = ax + b.
 
-        The naive relaxations are used, with slope equal to the smallest derivative in the
-        input interval.
+        The naive relaxations are used, with slope equal to the smallest derivative in
+        the input interval.
 
         Args:
-            lower_bounds_concrete_in    : The concrete lower bounds of the input to the nodes
-            upper_bounds_concrete_in    : The concrete upper bounds of the input to the nodes
-            upper                       : If true, the upper relaxation is calculated, else the lower
+            lower_bounds_concrete_in    : The concrete lower bounds of the input to the
+                                          nodes
+            upper_bounds_concrete_in    : The concrete upper bounds of the input to the
+                                          nodes
+            upper                       : If true, the upper relaxation is calculated,
+                                          else the lower
+
         Returns:
             The relaxations as a Nx2 array
         """
@@ -549,8 +633,15 @@ class SigmoidNaive(AbstractMapping):
         layer_size = lower_bounds_concrete_in.shape[0]
         relaxations = np.zeros((layer_size, 2))
 
-        a = np.min(np.hstack((self.derivative(lower_bounds_concrete_in).reshape((-1, 1)),
-                              self.derivative(upper_bounds_concrete_in).reshape((-1, 1)))), axis=1)
+        a = np.min(
+            np.hstack(
+                (
+                    self.derivative(lower_bounds_concrete_in).reshape((-1, 1)),
+                    self.derivative(upper_bounds_concrete_in).reshape((-1, 1)),
+                )
+            ),
+            axis=1,
+        )
 
         if upper:
             b = self.propagate(upper_bounds_concrete_in) - a * upper_bounds_concrete_in
@@ -562,13 +653,14 @@ class SigmoidNaive(AbstractMapping):
 
         return relaxations
 
-    def derivative(self, x: np.array) -> np.array:
+    def derivative(self, x: np.ndarray) -> np.ndarray:
 
         """
         Calculates the derivative of the Sigmoid at input x
 
         Args:
             x: The input
+
         Returns:
             The derivative of the Sigmoid at x
         """
@@ -577,7 +669,7 @@ class SigmoidNaive(AbstractMapping):
         return np.array(sigmoid * (1 - sigmoid))
 
     # noinspection PyMethodMayBeStatic
-    def integral(self, xl: np.array, xu: np.array) -> np.array:
+    def integral(self, xl: np.ndarray, xu: np.ndarray) -> np.ndarray:
 
         """
         Returns the integral of the Sigmoid from xl to xu.
@@ -585,6 +677,7 @@ class SigmoidNaive(AbstractMapping):
         Args:
             xl  : The lower bound
             xu  : The upper bounds
+
         Returns:
             The integral from xl to xu
         """

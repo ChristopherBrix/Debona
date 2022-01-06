@@ -1,4 +1,3 @@
-
 """
 Functions for loading input data.
 
@@ -10,7 +9,7 @@ import os
 import numpy as np
 
 
-def load_img(path: str, img_nums: list, shape: tuple) -> np.array:
+def load_img(path: str, img_nums: list, shape: tuple) -> np.ndarray:
 
     """
     Loads a image in the human-readable format.
@@ -31,14 +30,14 @@ def load_img(path: str, img_nums: list, shape: tuple) -> np.array:
 
     for idx, i in enumerate(img_nums):
         file = os.path.join(path, "image" + str(i))
-        with open(file, "r") as f:
+        with open(file, "r", encoding="utf-8") as f:
             data = [float(pixel) for pixel in f.readlines()[0].split(",")[:-1]]
             images[idx, :, :] = np.array(data).reshape(*shape)
 
     return images
 
 
-def load_mnist_human_readable(path: str, img_nums: list) -> np.array:
+def load_mnist_human_readable(path: str, img_nums: list) -> np.ndarray:
 
     """
     Loads a mnist image from the neurify dataset.
@@ -56,7 +55,7 @@ def load_mnist_human_readable(path: str, img_nums: list) -> np.array:
     return load_img(path, img_nums, (28, 28))
 
 
-def load_cifar10_human_readable(path: str, img_nums: list) -> np.array:
+def load_cifar10_human_readable(path: str, img_nums: list) -> np.ndarray:
 
     """
     Loads the Cifar10 images in human readable format.
@@ -74,14 +73,18 @@ def load_cifar10_human_readable(path: str, img_nums: list) -> np.array:
     return load_img(path, img_nums, (3, 32, 32))
 
 
-def load_images_eran(img_csv: str = "../../resources/images/cifar10_test.csv", num_images: int = 100,
-                     image_shape: tuple = (3, 32, 32)) -> tuple:
+def load_images_eran(
+    img_csv: str = "../../resources/images/cifar10_test.csv",
+    num_images: int = 100,
+    image_shape: tuple = (3, 32, 32),
+) -> tuple:
 
     """
     Loads the images from the eran csv.
 
     Args:
         The csv path
+
     Returns:
         images, targets
     """
@@ -91,11 +94,10 @@ def load_images_eran(img_csv: str = "../../resources/images/cifar10_test.csv", n
     images_array = np.zeros((num_images, np.prod(image_shape)), dtype=np.float32)
     targets_array = np.zeros(num_images, dtype=int)
 
-    with open(img_csv, "r") as file:
+    with open(img_csv, "r", encoding="utf-8") as file:
         for j in range(num_images):
             line_arr = file.readline().split(",")
             targets_array[j] = int(line_arr[0])
             images_array[j] = [float(pixel) for pixel in line_arr[1:]]
 
     return images_array.reshape((num_images, *image_shape)), targets_array
-

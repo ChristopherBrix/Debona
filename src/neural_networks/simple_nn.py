@@ -1,4 +1,3 @@
-
 """
 A few very simple neural networks used for unit-tests.
 
@@ -14,7 +13,8 @@ from src.neural_networks.verinet_nn import VeriNetNN
 class SimpleNN(VeriNetNN):
 
     """
-    A simple torch fully connected neural network with 2 input nodes, 2 hidden and 1 output for testing.
+    A simple torch fully connected neural network with 2 input nodes, 2 hidden and 1
+    output for testing.
     """
 
     def __init__(self, activation="Sigmoid"):
@@ -52,11 +52,11 @@ class SimpleNN(VeriNetNN):
 class SimpleNN2(VeriNetNN):
 
     """
-    A simple torch fully connected neural network with 1 input, 2 hidden and 2 output and 2 output nodes.
-    Mainly used for testing adversarial verifications in VeriNet.
+    A simple torch fully connected neural network with 1 input, 2 hidden and 2 output
+    and 2 output nodes. Mainly used for testing adversarial verifications in VeriNet.
     """
 
-    def __init__(self, activation: str="Sigmoid"):
+    def __init__(self, activation: str = "Sigmoid"):
 
         if activation == "Sigmoid":
             hidden_1 = nn.Sequential(nn.Linear(1, 2), nn.Sigmoid())
@@ -84,8 +84,8 @@ class SimpleNN2(VeriNetNN):
 class SimpleNNConv2(VeriNetNN):
 
     """
-    A simple torch fully connected neural network with 1 input, 2 hidden and 2 output and 2 output nodes.
-    Mainly used for testing adversarial verifications in VeriNet.
+    A simple torch fully connected neural network with 1 input, 2 hidden and 2 output
+    and 2 output nodes. Mainly used for testing adversarial verifications in VeriNet.
     """
 
     # noinspection PyArgumentList

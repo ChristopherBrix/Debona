@@ -1,10 +1,12 @@
-
 """
-A class for loading neural networks in nnet format, as described in the readme.
-The nnet format used is a slightly modified version of the ACAS Xu format (https://github.com/sisl/NNet).
+A class for loading neural networks in nnet format, as described in the readme. The nnet
+format used is a slightly modified version of the ACAS Xu format.
+(https://github.com/sisl/NNet).
 
 Author: Patrick Henriksen <patrick@henriksen.as>
 """
+
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import torch
@@ -18,33 +20,38 @@ class NNET:
     """
     A class for loading .nnet.
 
-    The class is used to convert .nnet to VeriNetNN(torch.nn.Module) objects and to normalize inputs
+    The class is used to convert .nnet to VeriNetNN(torch.nn.Module) objects and to
+    normalize inputs
     """
 
-    def __init__(self, path: str=None):
+    def __init__(self, path: str = None):
 
         """
         Args:
-            path    : The path of the .nnet file, if given the information is read from this file. If None
-                      init_nnet_from_file() or init_nnet_from_verinet_nn() can be used later.
+            path    : The path of the .nnet file, if given the information is read from
+                      this file. If None init_nnet_from_file() or
+                      init_nnet_from_verinet_nn() can be used later.
         """
 
-        self._main_info = None
-        self._min_values = None
-        self._max_values = None
-        self._mean = None
-        self._range = None
-        self._layer_activations = None
-        self._layer_types = None
-        self._layer_sizes = None
-        self._params = None
-        self._weights = None
-        self._biases = None
+        self._main_info: Dict[str, int] = {}
+        self._min_values: Optional[np.ndarray] = None
+        self._max_values: Optional[np.ndarray] = None
 
-        self.activation_map_torch = {-1: None,
-                                     0: nn.ReLU(),
-                                     1: nn.Sigmoid(),
-                                     2: nn.Tanh()}
+        self._mean: Optional[np.ndarray] = None
+        self._range: Optional[np.ndarray] = None
+        self._layer_activations: List[int] = []
+        self._layer_types: List[int] = []
+        self._layer_sizes: List[int] = []
+        self._params: List[Any] = []
+        self._weights: List[Any] = []
+        self._biases: List[Any] = []
+
+        self.activation_map_torch = {
+            -1: None,
+            0: nn.ReLU(),
+            1: nn.Sigmoid(),
+            2: nn.Tanh(),
+        }
 
         if path is not None:
             self.init_nnet_from_file(path)
@@ -112,11 +119,12 @@ class NNET:
 
         Args:
             path:   The open file
+
         Returns:
             (layer_types, layer_size, conv_params) as lists
         """
 
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
 
             last_pos = f.tell()
             line = f.readline()
@@ -142,14 +150,15 @@ class NNET:
             for layer_num, layer_type in enumerate(self.layer_types):
 
                 if layer_type == 0:
-                    self._read_nnet_fc(f, self.layer_sizes[layer_num], self.layer_sizes[layer_num + 1])
-
+                    self._read_nnet_fc(
+                        f, self.layer_sizes[layer_num], self.layer_sizes[layer_num + 1]
+                    )
                 elif layer_type == 1:
                     self._read_nnet_conv2d(f, self._params[layer_num])
-
                 elif layer_type == 2:
-                    self._read_nnet_batchnorm_2d(f, self.params[layer_num]["num_features"])
-
+                    self._read_nnet_batchnorm_2d(
+                        f, self.params[layer_num]["num_features"]
+                    )
                 else:
                     raise ValueError(f"Layer type: {layer_type} not recognized")
 
@@ -163,16 +172,16 @@ class NNET:
         """
 
         line = file.readline().split(",")[:-1]
-
-        assert len(line) == 4, f"Expected first line to have 4 ints, number of: layers, inputs, outputs, max layer " +\
-                               f"size, found {len(line)}"
-
+        assert len(line) == 4, (
+            "Expected first line to have 4 ints, number of: layers, inputs, outputs, "
+            + f"max layer, size, found {len(line)}"
+        )
         self._main_info = {
-                     "num_layers": int(line[0]),
-                     "num_inputs": int(line[1]),
-                     "num_outputs": int(line[2]),
-                     "max_layer_size": int(line[3])
-                     }
+            "num_layers": int(line[0]),
+            "num_inputs": int(line[1]),
+            "num_outputs": int(line[2]),
+            "max_layer_size": int(line[3]),
+        }
 
     def _read_nnet_layer_sizes(self, file):
 
@@ -186,7 +195,6 @@ class NNET:
         line = file.readline().split(",")[:-1]
         msg = f"File had {len(line)} layer sizes, expected {self.num_layers + 1}"
         assert len(line) == (self.num_layers + 1), msg
-
         self._layer_sizes = [int(size) for size in line]
 
     def _read_nnet_min_values(self, file):
@@ -199,10 +207,8 @@ class NNET:
         """
 
         line = file.readline().split(",")[:-1]
-
         msg = f"Got {len(line)} min values, expected 1 or {self.num_inputs}"
         assert len(line) == 1 or len(line) == self.num_inputs, msg
-
         self._min_values = np.array([float(min_val) for min_val in line])
 
     def _read_nnet_max_values(self, file):
@@ -215,10 +221,8 @@ class NNET:
         """
 
         line = file.readline().split(",")[:-1]
-
         msg = f"Got {len(line)} max values, expected 1 or {self.num_inputs}"
         assert len(line) == 1 or len(line) == self.num_inputs, msg
-
         self._max_values = np.array([float(max_val) for max_val in line])
 
     def _read_nnet_mean(self, file):
@@ -231,10 +235,8 @@ class NNET:
         """
 
         line = file.readline().split(",")[:-1]
-
         msg = f"Got {len(line)} mean values, expected 1, {self.num_inputs}"
         assert len(line) == 1 or len(line) == self.num_inputs, msg
-
         self._mean = np.array([float(mean) for mean in line])
 
     def _read_nnet_range(self, file):
@@ -247,10 +249,8 @@ class NNET:
         """
 
         line = file.readline().split(",")[:-1]
-
         msg = f"Got {len(line)} range values, expected 1, {self.num_inputs}"
         assert len(line) == 1 or len(line) == self.num_inputs, msg
-
         self._range = np.array([float(val) for val in line])
 
     def _read_nnet_layer_activations(self, file):
@@ -270,7 +270,10 @@ class NNET:
         self._layer_activations = [int(layer_type) for layer_type in line]
 
         for activation in self._layer_activations:
-            msg = "NNET only supports Relu (0), Sigmoid (1) and Tanh (2), got activation: {activation}"
+            msg = (
+                "NNET only supports Relu (0), Sigmoid (1) and "
+                f"Tanh (2), got activation: {activation}"
+            )
             assert activation in [-1, 0, 1, 2], msg
 
     def _read_nnet_layer_types(self, file):
@@ -290,8 +293,10 @@ class NNET:
         self._layer_types = [int(layer_type) for layer_type in line]
 
         for layer_type in self._layer_types:
-            assert layer_type in [0, 1, 2], (f"NNET only supports FC (0), Conv2d (1) and BatchNorm2d (2), " +
-                                             "got type {layer_type}")
+            assert layer_type in [0, 1, 2], (
+                "NNET only supports FC (0), Conv2d (1) and BatchNorm2d (2), "
+                f"got type {layer_type}"
+            )
 
     def _read_nnet_params(self, file):
 
@@ -315,8 +320,13 @@ class NNET:
                 msg = f"Got {len(line)} convolutional parameters, expected 5"
                 assert len(line) == 5, msg
 
-                params = {"out_channels": int(line[0]), "in_channels": int(line[1]), "kernel_size": int(line[2]),
-                          "stride": int(line[3]), "padding": int(line[4])}
+                params = {
+                    "out_channels": int(line[0]),
+                    "in_channels": int(line[1]),
+                    "kernel_size": int(line[2]),
+                    "stride": int(line[3]),
+                    "padding": int(line[4]),
+                }
 
             if layer_type == 2:
 
@@ -327,7 +337,11 @@ class NNET:
                 line = file.readline().split(",")[:-1]
                 running_var = [np.float64(var) for var in line]
 
-                params = {"num_features": num_features, "running_mean": running_mean, "running_var": running_var}
+                params = {
+                    "num_features": num_features,
+                    "running_mean": running_mean,
+                    "running_var": running_var,
+                }
 
             self._params.append(params)
 
@@ -337,7 +351,8 @@ class NNET:
         Reads and returns one fc layer of the nnet file.
 
         Args:
-            file    : The file io stream, f calling f.readline() is assumed to return the first row of weights.
+            file    : The file io stream, f calling f.readline() is assumed to return
+                      the first row of weights.
             in_size : The input size to the fc layer
             out_size: The out size of the fc layer
         """
@@ -362,20 +377,32 @@ class NNET:
         Reads and returns one conv2d layer of the nnet file
 
         Args:
-            file        : The file io stream, f calling f.readline() is assumed to return the first row of weights.
+            file        : The file io stream, f calling f.readline() is assumed to
+                          return the first row of weights.
             conv_params : A dict containing the params of the convo layer:
-                          {'in_channels': int, 'out_channels': int, 'kernel_size': int, 'stride': int, 'padding': int}
+                          {'in_channels': int, 'out_channels': int, 'kernel_size': int,
+                          'stride': int, 'padding': int}
         """
 
-        weights = np.empty((conv_params["out_channels"], conv_params["in_channels"], conv_params["kernel_size"],
-                            conv_params["kernel_size"]))
+        weights = np.empty(
+            (
+                conv_params["out_channels"],
+                conv_params["in_channels"],
+                conv_params["kernel_size"],
+                conv_params["kernel_size"],
+            )
+        )
         bias = np.empty(conv_params["out_channels"])
 
         for channel in range(conv_params["out_channels"]):
             line = file.readline().split(",")[:-1]
-            weights[channel] = np.array([np.float64(num) for num in line]).reshape((conv_params["in_channels"],
-                                                                                    conv_params["kernel_size"],
-                                                                                    conv_params["kernel_size"]))
+            weights[channel] = np.array([np.float64(num) for num in line]).reshape(
+                (
+                    conv_params["in_channels"],
+                    conv_params["kernel_size"],
+                    conv_params["kernel_size"],
+                )
+            )
 
         for channel in range(conv_params["out_channels"]):
             line = file.readline().split(",")[:-1]
@@ -390,7 +417,8 @@ class NNET:
         Reads and returns one batchnorm layer of the nnet file.
 
         Args:
-            file    : The file io stream, f calling f.readline() should return the first row of weights.
+            file    : The file io stream, f calling f.readline() should return the first
+                      row of weights.
         """
 
         weights = np.empty(feature_num)
@@ -406,23 +434,31 @@ class NNET:
         self.weights.append(weights)
         self.biases.append(bias)
 
-    def init_nnet_from_verinet_nn(self, model: VeriNetNN, input_shape: np.array, min_values: np.array,
-                                  max_values: np.array, input_mean: np.array, input_range: np.array):
+    def init_nnet_from_verinet_nn(
+        self,
+        model: VeriNetNN,
+        input_shape: np.ndarray,
+        min_values: np.ndarray,
+        max_values: np.ndarray,
+        input_mean: np.ndarray,
+        input_range: np.ndarray,
+    ):
 
         """
         Gets the nnet parameters from the given model and args
 
         Args:
             model       : The VeriNetNN model
-            input_shape : The shape of the input, either a 1d (size) or 3d (channels, height, width) array
-            min_values  : The minimum values for the input, either a array of size 1 or a array of the same size as
-                          the input
-            max_values  : The maximum values for the input, either a array of size 1 or a array of the same size as
-                          the input
-            input_mean  : The mean of the inputs, either a array of size 1 or a array of the same size as
-                          the input
-            input_range : The range of the inputs, either a array of size 1 or a array of the same size as
-                          the input
+            input_shape : The shape of the input, either a 1d (size) or 3d (channels,
+                          height, width) array
+            min_values  : The minimum values for the input, either a array of size 1 or
+                          a array of the same size as the input
+            max_values  : The maximum values for the input, either a array of size 1 or
+                          a array of the same size as the input
+            input_mean  : The mean of the inputs, either a array of size 1 or a array of
+                          the same size as the input
+            input_range : The range of the inputs, either a array of size 1 or a array
+                          of the same size as the input
         """
 
         input_shape = np.array(input_shape)
@@ -430,11 +466,11 @@ class NNET:
         self._get_verinet_nn_layer_activations(model)
 
         self._main_info = {
-                     "num_layers": len(self._layer_types),
-                     "num_inputs": self._layer_sizes[0],
-                     "num_outputs": self._layer_sizes[-1],
-                     "max_layer_size": max(self._layer_sizes)
-                     }
+            "num_layers": len(self._layer_types),
+            "num_inputs": self._layer_sizes[0],
+            "num_outputs": self._layer_sizes[-1],
+            "max_layer_size": max(self._layer_sizes),
+        }
 
         num_inputs = self._layer_sizes[0]
 
@@ -443,8 +479,11 @@ class NNET:
         input_mean = np.atleast_1d(input_mean)
         input_range = np.atleast_1d(input_range)
 
-        msg = "min_values, max_values, input_mean and input_range should be of size 1 or the same size as the input"
-        assert min_values.shape == (1,) or min_values.shape == (num_inputs, ), msg
+        msg = (
+            "min_values, max_values, input_mean and input_range should be of size 1 or"
+            + " the same size as the input"
+        )
+        assert min_values.shape == (1,) or min_values.shape == (num_inputs,), msg
         assert max_values.shape == (1,) or max_values.shape == (num_inputs,), msg
         assert input_mean.shape == (1,) or input_mean.shape == (num_inputs,), msg
         assert input_range.shape == (1,) or input_range.shape == (num_inputs,), msg
@@ -454,7 +493,7 @@ class NNET:
         self._mean = input_mean
         self._range = input_range
 
-    def _get_verinet_nn_layer_info(self, model: VeriNetNN, input_shape: np.array):
+    def _get_verinet_nn_layer_info(self, model: VeriNetNN, input_shape: np.ndarray):
 
         """
         Gets the layer sizes and types from the VerNetNN model
@@ -489,34 +528,56 @@ class NNET:
 
             elif isinstance(layer, nn.Conv2d):
 
-                assert len(layer_shapes[-1]) == 3, f"Layer {i} was Conv2d, but shape of last layer was not 3"
+                assert (
+                    len(layer_shapes[-1]) == 3
+                ), f"Layer {i} was Conv2d, but shape of last layer was not 3"
 
                 kernel_size = np.array(layer.kernel_size)
                 padding = np.array(layer.padding)
                 stride = np.array(layer.stride)
 
-                assert kernel_size[0] == kernel_size[1], "Only square kernels are supported by nnet"
-                assert padding[0] == padding[1], "Only equal padding, vertical and horizontal, is supported by nnet"
-                assert stride[0] == stride[1], "Only equal stride, vertical and horizontal, is supported by nnet"
+                assert (
+                    kernel_size[0] == kernel_size[1]
+                ), "Only square kernels are supported by nnet"
+                assert (
+                    padding[0] == padding[1]
+                ), "Only equal padding, vertical and horizontal, is supported by nnet"
+                assert (
+                    stride[0] == stride[1]
+                ), "Only equal stride, vertical and horizontal, is supported by nnet"
 
-                img_size = (layer_shapes[-1][1:] + 2*padding - kernel_size) / stride + 1
+                img_size = (
+                    layer_shapes[-1][1:] + 2 * padding - kernel_size
+                ) / stride + 1
 
-                layer_shapes.append(np.array((layer.out_channels, *img_size), dtype=int))
+                layer_shapes.append(
+                    np.array((layer.out_channels, *img_size), dtype=int)
+                )
                 self._layer_sizes.append(np.prod(layer_shapes[-1]))
                 self._layer_types.append(1)
-                self._params.append({"out_channels": layer.out_channels,
-                                     "in_channels": layer_shapes[-2][0],
-                                     "kernel_size": kernel_size[0],
-                                     "stride": stride[0],
-                                     "padding": padding[0]})
+                self._params.append(
+                    {
+                        "out_channels": layer.out_channels,
+                        "in_channels": layer_shapes[-2][0],
+                        "kernel_size": kernel_size[0],
+                        "stride": stride[0],
+                        "padding": padding[0],
+                    }
+                )
 
             elif isinstance(layer, nn.BatchNorm2d):
                 self._layer_sizes.append(self._layer_sizes[-1])
                 layer_shapes.append(layer_shapes[-1])
                 self._layer_types.append(2)
-                self._params.append({"num_features": layer.num_features,
-                                     "running_mean": layer.running_mean.detach().numpy(),
-                                     "running_var": layer.running_var.detach().numpy()})
+                assert layer.running_mean is not None
+                assert layer.running_var is not None
+                self._params.append(
+                    {
+                        "num_features": layer.num_features,
+                        "running_mean": layer.running_mean.detach().numpy(),
+                        "running_var": layer.running_var.detach().numpy(),
+                    }
+                )
 
     def _get_verinet_nn_layer_activations(self, model: VeriNetNN):
 
@@ -545,7 +606,10 @@ class NNET:
                 self.layer_activations.append(2)
 
             else:
-                msg = f"Activation function {sequential[1]} not recognized, should be nn.Relu, nn.Sigmoid or nn.Tanh"
+                msg = (
+                    f"Activation function {sequential[1]} not recognized, should be"
+                    + " nn.Relu, nn.Sigmoid or nn.Tanh"
+                )
                 raise ValueError(msg)
 
     # noinspection PyArgumentList
@@ -565,22 +629,33 @@ class NNET:
             act_num = self.layer_activations[layer_num]
             try:
                 act = self.activation_map_torch[act_num]
-            except KeyError:
-                raise AssertionError(f"Didn't recognize activation function {act_num} for layer {layer_num}")
+            except KeyError as exc:
+                raise AssertionError(
+                    f"Didn't recognize activation function {act_num} for layer"
+                    + f"{layer_num}"
+                ) from exc
 
             layer_type_num = self.layer_types[layer_num]
 
             if layer_type_num == 0:
-                layer = nn.Linear(self.layer_sizes[layer_num], self.layer_sizes[layer_num + 1])
+                layer: nn.Module = nn.Linear(
+                    self.layer_sizes[layer_num], self.layer_sizes[layer_num + 1]
+                )
                 layer.weight.data = torch.Tensor(self.weights[layer_num])
                 layer.bias.data = torch.Tensor(self.biases[layer_num])
 
             elif layer_type_num == 1:
                 params = self.params[layer_num]
-                layer = nn.Conv2d(params["in_channels"], params["out_channels"], params["kernel_size"],
-                                  params["stride"], params["padding"])
+                layer = nn.Conv2d(
+                    params["in_channels"],
+                    params["out_channels"],
+                    params["kernel_size"],
+                    params["stride"],
+                    params["padding"],
+                )
                 layer.weight.data = torch.Tensor(self.weights[layer_num])
-                layer.bias.data = torch.Tensor(self.biases[layer_num])
+                # pylint: disable=line-too-long
+                layer.bias.data = torch.Tensor(self.biases[layer_num])  # type: ignore[union-attr]
 
             elif layer_type_num == 2:
 
@@ -594,7 +669,10 @@ class NNET:
                 layer.bias.data = torch.FloatTensor(self.biases[layer_num])
 
             else:
-                raise AssertionError(f"Didn't recognize layer type {layer_type_num} for layer {layer_num}")
+                raise AssertionError(
+                    f"Didn't recognize layer type {layer_type_num} for layer "
+                    + f"{layer_num}"
+                )
 
             if act is not None:
                 layers.append(nn.Sequential(layer, act))
@@ -605,10 +683,13 @@ class NNET:
 
     def write_nnet_to_file(self, filepath: str):
 
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
 
             f.write("// A neural network in nnet format\n")
-            f.write("// The documentation can be found in the src/data_loader/readme.md file of the Verinet project\n")
+            f.write(
+                "// The documentation can be found in the src/data_loader/readme.md "
+                + "file of the Verinet project\n"
+            )
 
             self._write_main_info(f)
             self._write_layer_size(f)
@@ -737,10 +818,10 @@ class NNET:
 
                 f.write(f"{params['num_features']},\n")
 
-                for mean in params['running_mean']:
+                for mean in params["running_mean"]:
                     f.write(f"{mean},")
                 f.write("\n")
-                for var in params['running_var']:
+                for var in params["running_var"]:
                     f.write(f"{var},")
                 f.write("\n")
 
@@ -768,37 +849,34 @@ class NNET:
                     f.write(f"{bias}, \n")
 
             if self._layer_types[layer_num] == 1:
-
                 for out_channel in weights:
                     for in_channel in out_channel:
                         for row in in_channel:
                             for weight in row:
                                 f.write(f"{weight},")
                     f.write("\n")
-
                 for bias in biases:
                     f.write(f"{bias}, \n")
-
             if self._layer_types[layer_num] == 2:
-
                 for weight in weights:
                     f.write(f"{weight},")
                 f.write("\n")
-
                 for bias in biases:
                     f.write(f"{bias}, \n")
 
-    def normalize_input(self, x: np.array) -> np.array:
+    def normalize_input(self, x: np.ndarray) -> np.ndarray:
 
         """
-        Uses the range, mean, max_values and min_values read from the nnet file to normalize the given input
+        Uses the range, mean, max_values and min_values read from the nnet file to
+        normalize the given input
 
         Args:
-            x: The input, should be either 1D or a 2D batch, with of size: (batch_size, input_dim)
+            x: The input, should be either 1D or a 2D batch, with of size: (batch_size,
+               input_dim)
+
         Returns:
             The normalized input
         """
-
         x = self._clip_min(x)
         x = self._clip_max(x)
         x = self._subtract_mean(x)
@@ -806,108 +884,122 @@ class NNET:
 
         return x
 
-    def _clip_min(self, x: np.array):
+    def _clip_min(self, x: np.ndarray):
 
         """
         Clips the input to the stored min values
 
         Args:
-            x: The input, should be either 1D or a 2D batch, with of size: (batch_size, input_dim)
+            x: The input, should be either 1D or a 2D batch, with of size: (batch_size,
+               input_dim)
+
         Returns:
             The clipped input
         """
 
         x = x.copy()
-
-        if (self.min_values.shape[0] == 1) or (len(x.shape) == 1 and x.shape[0] == self.num_inputs):
+        if (self.min_values.shape[0] == 1) or (
+            len(x.shape) == 1 and x.shape[0] == self.num_inputs
+        ):
             x[x < self.min_values] = self.min_values
 
         elif (len(x.shape) == 2) and x.shape[1] == self.num_inputs:
 
             for row in range(x.shape[0]):
-                x[row, :][x[row, :] < self.min_values] = self.min_values[x[row, :] < self.min_values]
-
+                x[row, :][x[row, :] < self.min_values] = self.min_values[
+                    x[row, :] < self.min_values
+                ]
         else:
-            raise ValueError(f"Expected input to be 1D or 2D with size (batch_size, input_dim), is {x.shape}")
-
+            raise ValueError(
+                "Expected input to be 1D or 2D with size (batch_size, input_dim), is "
+                + f"{x.shape}"
+            )
         return x
 
-    def _clip_max(self, x: np.array):
+    def _clip_max(self, x: np.ndarray):
 
         """
         Clips the input to the stored max values
-
         Args:
-            x: The input, should be either 1D or a 2D batch, with of size: (batch_size, input_dim)
+            x: The input, should be either 1D or a 2D batch, with of size: (batch_size,
+               input_dim)
+
         Returns:
             The clipped input
         """
-
         x = x.copy()
 
-        if (self.max_values.shape[0] == 1) or (len(x.shape) == 1 and x.shape[0] == self.num_inputs):
+        if (self.max_values.shape[0] == 1) or (
+            len(x.shape) == 1 and x.shape[0] == self.num_inputs
+        ):
             x[x > self.max_values] = self.max_values
 
         elif (len(x.shape) == 2) and x.shape[1] == self.num_inputs:
 
             for row in range(x.shape[0]):
-                x[row, :][x[row, :] > self.max_values] = self.max_values[x[row, :] > self.max_values]
+                x[row, :][x[row, :] > self.max_values] = self.max_values[
+                    x[row, :] > self.max_values
+                ]
 
         else:
-            raise ValueError(f"Expected input to be 1D or 2D with size (batch_size, input_dim), is {x.shape}")
+            raise ValueError(
+                "Expected input to be 1D or 2D with size (batch_size, input_dim), is "
+                + f"{x.shape}"
+            )
 
         return x
 
-    def _subtract_mean(self, x: np.array):
-
+    def _subtract_mean(self, x: np.ndarray):
         """
         Subtracts the mean
-
         Args:
-            x: The input, should be either 1D or a 2D batch, with of size: (batch_size, input_dim)
+            x: The input, should be either 1D or a 2D batch, with of size: (batch_size,
+               input_dim)
+
         Returns:
             x-self.mean
         """
 
         x = x.copy()
-
-        if (self.max_values.shape[0] == 1) or (len(x.shape) == 1 and x.shape[0] == self.num_inputs):
-
-            x -= self._mean
-
+        if (self.max_values.shape[0] == 1) or (
+            len(x.shape) == 1 and x.shape[0] == self.num_inputs
+        ):
+            x -= self.mean
         elif (len(x.shape) == 2) and x.shape[1] == self.num_inputs:
-
             for row in range(x.shape[0]):
                 x[row, :] -= self.mean
-
         else:
-            raise ValueError(f"Expected input to be 1D or 2D with size (batch_size, input_dim), is {x.shape}")
-
+            raise ValueError(
+                "Expected input to be 1D or 2D with size (batch_size, input_dim), is "
+                + f"{x.shape}"
+            )
         return x
 
-    def _divide_range(self, x: np.array):
-
+    def _divide_range(self, x: np.ndarray):
         """
         Subtracts the mean
-
         Args:
-            x: The input, should be either 1D or a 2D batch, with of size: (batch_size, input_dim)
+            x: The input, should be either 1D or a 2D batch, with of size: (batch_size,
+               input_dim)
+
         Returns:
             x-self.range
         """
-
         x = x.copy()
-
-        if (self.max_values.shape[0] == 1) or (len(x.shape) == 1 and x.shape[0] == self.num_inputs):
-
-            x /= self._range
+        if (self.max_values.shape[0] == 1) or (
+            len(x.shape) == 1 and x.shape[0] == self.num_inputs
+        ):
+            x /= self.range
 
         elif (len(x.shape) == 2) and x.shape[1] == self.num_inputs:
 
             for row in range(x.shape[0]):
-                x[row, :] /= self._range
+                x[row, :] /= self.range
 
         else:
-            raise ValueError(f"Expected input to be 1D or 2D with size (batch_size, input_dim), is {x.shape}")
+            raise ValueError(
+                "Expected input to be 1D or 2D with size (batch_size, input_dim), is "
+                + f"{x.shape}"
+            )
 
         return x

@@ -1,17 +1,21 @@
+"""
+An example that runs the verification toolkit.
+"""
+
+import gurobipy as grb
 import numpy as np
 import torch
-import gurobipy as grb
 import torch.nn as nn
 
-from src.neural_networks.verinet_nn import VeriNetNN
+from src.algorithm.verification_objectives import LocalRobustnessObjective
 from src.algorithm.verinet import VeriNet
+from src.algorithm.verinet_util import Status
 from src.data_loader.input_data_loader import load_mnist_human_readable
 from src.data_loader.nnet import NNET
-from src.algorithm.verification_objectives import LocalRobustnessObjective
-from src.algorithm.verinet_util import Status
+from src.neural_networks.verinet_nn import VeriNetNN
 
 
-def create_input_bounds(image: np.array, eps: int):
+def create_input_bounds(image: np.ndarray, eps: int):
 
     """
     Creates the l-infinity input bounds from the given image and epsilon
@@ -40,7 +44,9 @@ def local_robustnes_nnet():
     solver = VeriNet(model, max_procs=20)
 
     # Load the image and use the predicted class as correct class
-    image = load_mnist_human_readable("../data/mnist_neurify/test_images_100/", img_nums=[0]).reshape(-1)
+    image = load_mnist_human_readable(
+        "../data/mnist_neurify/test_images_100/", img_nums=[0]
+    ).reshape(-1)
     correct_class = int(model(torch.Tensor(image)).argmax(dim=1))
 
     for eps in [8, 15]:
@@ -50,11 +56,14 @@ def local_robustnes_nnet():
         input_bounds = nnet.normalize_input(input_bounds)
 
         # Initialize the verification objective and solve the problem
-        objective = LocalRobustnessObjective(correct_class, input_bounds, output_size=10)
+        objective = LocalRobustnessObjective(
+            correct_class, input_bounds, output_size=10
+        )
         solver.verify(objective, timeout=3600, no_split=False, verbose=False)
 
-        # Store the counter example if Unsafe. Status enum is defined in src.algorithm.verinet_util
-        if solver.status == Status.Unsafe:
+        # Store the counter example if UNSAFE. Status enum is defined in
+        # src.algorithm.verinet_util
+        if solver.status == Status.UNSAFE:
             _ = solver.counter_example
 
         print("")
@@ -67,32 +76,35 @@ def local_robustnes_nnet():
 def verinet_nn_example():
 
     """
-    An example run of how to use the VeriNetNN class to create a neural network instead of reading from nnet file.
+    An example run of how to use the VeriNetNN class to create a neural network instead
+    of reading from nnet file.
 
-    The VeriNetNN class accepts a list of layers arg in init. The forward function should not be modified and it
-    is assumed that each object in the layers list is applied sequentially.
+    The VeriNetNN class accepts a list of layers arg in init. The forward function
+    should not be modified and it is assumed that each object in the layers list is
+    applied sequentially.
     """
 
-    print("\nRunning example run with custom VeriNetNN and the local robustness verification objective:")
+    print(
+        "\nRunning example run with custom VeriNetNN and the local robustness"
+        + " verification objective:"
+    )
 
     torch.manual_seed(0)
-    layers = [nn.Linear(2, 2),
-              nn.ReLU(),
-              nn.Linear(2, 2),
-              nn.ReLU(),
-              nn.Linear(2, 2)]
+    layers = [nn.Linear(2, 2), nn.ReLU(), nn.Linear(2, 2), nn.ReLU(), nn.Linear(2, 2)]
 
     model = VeriNetNN(layers)
 
-    input_bounds = np.array([[-10, 10],
-                            [-10, 10]])
+    input_bounds = np.array([[-10, 10], [-10, 10]])
 
     solver = VeriNet(model, max_procs=20)
-    objective = LocalRobustnessObjective(correct_class=1, input_bounds=input_bounds, output_size=2)
+    objective = LocalRobustnessObjective(
+        correct_class=1, input_bounds=input_bounds, output_size=2
+    )
     solver.verify(objective, timeout=3600, no_split=False, verbose=False)
 
-    # Store the counter example if Unsafe. Status enum is defined in src.algorithm.verinet_util
-    if solver.status == Status.Unsafe:
+    # Store the counter example if UNSAFE. Status enum is defined in
+    # src.algorithm.verinet_util
+    if solver.status == Status.UNSAFE:
         _ = solver.counter_example
 
     print("")
@@ -101,7 +113,7 @@ def verinet_nn_example():
     print(f"Maximum depth reached: {solver.max_depth}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # Get the "Academic license" print from gurobi at the beginning
     grb.Model()

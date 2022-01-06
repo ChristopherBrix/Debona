@@ -1,17 +1,17 @@
-
 """
 Util functions for nn_bounds
 
 Author: Patrick Henriksen <patrick@henriksen.as>
 """
 
-from enum import Enum
 import numpy as np
 from numba import jit, prange
 
 
 @jit(nopython=True, cache=True)
-def concretise_symbolic_bounds_jit(input_bounds: np.array, symbolic_bounds: np.array, outward_round: float=0):
+def concretise_symbolic_bounds_jit(
+    input_bounds: np.ndarray, symbolic_bounds: np.ndarray, outward_round: float = 0
+):
 
     """
     Calculates the concrete input bounds from the symbolic.
@@ -19,13 +19,14 @@ def concretise_symbolic_bounds_jit(input_bounds: np.array, symbolic_bounds: np.a
     Args:
         input_bounds    : The input bounds
         symbolic_bounds : The symbolic bounds
-        outward_round   : If >0, each float operation in the concretization is rounded outwards by this amount
+        outward_round   : If >0, each float operation in the concretization is rounded
+                          outwards by this amount
     """
 
     layer_size = symbolic_bounds.shape[0]
     concrete_bounds_in = np.empty((layer_size, 2))
 
-    for j in prange(layer_size):
+    for j in prange(layer_size):  # pylint: disable=not-an-iterable
 
         # Add bias
         temp_lower = symbolic_bounds[j, -1]
@@ -48,14 +49,14 @@ def concretise_symbolic_bounds_jit(input_bounds: np.array, symbolic_bounds: np.a
 
 
 @jit(nopython=True, cache=True)
-def sum_error_jit(error_matrix: np.array):
+def sum_error_jit(error_matrix: np.ndarray):
 
     """
     Calculates the lower and upper error for each node.
 
     Args:
-        error_matrix    : The error matrix where each row is a node in the current layer and each column is a
-                          node in the previous layers
+        error_matrix    : The error matrix where each row is a node in the current layer
+                          and each column is a node in the previous layers
     """
 
     layer_size = error_matrix.shape[0]

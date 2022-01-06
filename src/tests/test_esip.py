@@ -1,25 +1,24 @@
-
 """
 Unit-tests for the ESIP class
 
 Author: Patrick Henriksen <patrick@henriksen.as>
 """
 
-import torch
-import numpy as np
 import unittest
 import warnings
 
-from src.neural_networks.simple_nn import SimpleNN, SimpleNNConv2, SimpleNNBatchNorm2D
+import numpy as np
+import torch
+
 from src.algorithm.esip import ESIP
+from src.algorithm.mappings.layers import FC, BatchNorm2d, Conv2d
 from src.algorithm.mappings.piecewise_linear import Relu
 from src.algorithm.mappings.s_shaped import Sigmoid, Tanh
-from src.algorithm.mappings.layers import FC, Conv2d, BatchNorm2d
+from src.neural_networks.simple_nn import SimpleNN, SimpleNNBatchNorm2D, SimpleNNConv2
 
 
 # noinspection PyArgumentList,PyUnresolvedReferences
 class TestNNBounds(unittest.TestCase):
-
     def setUp(self):
 
         warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
@@ -48,7 +47,9 @@ class TestNNBounds(unittest.TestCase):
 
         mappings_sigmoid = [None, FC, Sigmoid, FC, Sigmoid]
         for i in range(1, len(mappings_sigmoid)):
-            self.assertTrue(isinstance(self.bounds_sigmoid._mappings[i], mappings_sigmoid[i]))
+            self.assertTrue(
+                isinstance(self.bounds_sigmoid._mappings[i], mappings_sigmoid[i])
+            )
 
         mappings_tanh = [None, FC, Tanh, FC, Tanh]
         for i in range(1, len(mappings_tanh)):
@@ -56,52 +57,58 @@ class TestNNBounds(unittest.TestCase):
 
         mappings_conv2 = [None, Conv2d, Conv2d]
         for i in range(1, len(mappings_conv2)):
-            self.assertTrue(isinstance(self.bounds_conv2._mappings[i], mappings_conv2[i]))
+            self.assertTrue(
+                isinstance(self.bounds_conv2._mappings[i], mappings_conv2[i])
+            )
 
         mappings_batch_norm_2d = [None, Conv2d, BatchNorm2d]
         for i in range(1, len(mappings_batch_norm_2d)):
-            self.assertTrue(isinstance(self.bounds_batch_norm_2d._mappings[i], mappings_batch_norm_2d[i]))
+            self.assertTrue(
+                isinstance(
+                    self.bounds_batch_norm_2d._mappings[i], mappings_batch_norm_2d[i]
+                )
+            )
 
     def test_concretize_symbolic_bounds(self):
 
         """
-        Tests the output from the concretize_symbolic_bounds() method against ground truth.
+        Tests the output from the concretize_symbolic_bounds() method against ground
+        truth.
         """
 
-        input_bounds = np.array([[1., 2.], [-2., 0.]])
-        symb_bounds = np.array([[1., 1., 0.], [-1., 0., 1.]])
+        input_bounds = np.array([[1.0, 2.0], [-2.0, 0.0]])
+        symb_bounds = np.array([[1.0, 1.0, 0.0], [-1.0, 0.0, 1.0]])
         error_matrix = np.array([[0.5, 1, 1.5], [0, 0, -1]])
-        concrete_bounds, errors = self.bounds_relu._calc_bounds_concrete_jit(input_bounds, symb_bounds, error_matrix)
+        concrete_bounds, errors = self.bounds_relu._calc_bounds_concrete_jit(
+            input_bounds, symb_bounds, error_matrix
+        )
 
-        gt_bounds = np.array([[-1., 5.], [-2, 0.]])
+        gt_bounds = np.array([[-1.0, 5.0], [-2, 0.0]])
         gt_errors = np.array([[0, 3], [-1, 0]])
 
         for node_num in range(2):
-            self.assertAlmostEqual(gt_bounds[node_num, 0],
-                                   concrete_bounds[node_num, 0])
-            self.assertAlmostEqual(gt_bounds[node_num, 1],
-                                   concrete_bounds[node_num, 1])
-            self.assertAlmostEqual(gt_errors[node_num, 0],
-                                   errors[node_num, 0])
-            self.assertAlmostEqual(gt_errors[node_num, 1],
-                                   errors[node_num, 1])
+            self.assertAlmostEqual(gt_bounds[node_num, 0], concrete_bounds[node_num, 0])
+            self.assertAlmostEqual(gt_bounds[node_num, 1], concrete_bounds[node_num, 1])
+            self.assertAlmostEqual(gt_errors[node_num, 0], errors[node_num, 0])
+            self.assertAlmostEqual(gt_errors[node_num, 1], errors[node_num, 1])
 
     def test_adjust_bounds_from_forced_bounds(self):
 
         """
-        Tests the output from the _adjust_bounds_from_forced_bounds() method against ground truth.
+        Tests the output from the _adjust_bounds_from_forced_bounds() method against
+        ground truth.
         """
 
-        concrete_bounds = np.array([[1., 2.], [-2., 0.]])
+        concrete_bounds = np.array([[1.0, 2.0], [-2.0, 0.0]])
         forced_bounds = np.array([[-10, 1], [-1, 10]])
-        gt_bounds = np.array([[1., 1.], [-1., 0.]])
-        concrete_bounds = self.bounds_relu._adjust_bounds_from_forced_bounds(concrete_bounds, forced_bounds)
+        gt_bounds = np.array([[1.0, 1.0], [-1.0, 0.0]])
+        concrete_bounds = self.bounds_relu._adjust_bounds_from_forced_bounds(
+            concrete_bounds, forced_bounds
+        )
 
         for node_num in range(2):
-            self.assertAlmostEqual(gt_bounds[node_num, 0],
-                                   concrete_bounds[node_num, 0])
-            self.assertAlmostEqual(gt_bounds[node_num, 1],
-                                   concrete_bounds[node_num, 1])
+            self.assertAlmostEqual(gt_bounds[node_num, 0], concrete_bounds[node_num, 0])
+            self.assertAlmostEqual(gt_bounds[node_num, 1], concrete_bounds[node_num, 1])
 
     def test_valid_concrete_bounds(self):
 
@@ -113,7 +120,9 @@ class TestNNBounds(unittest.TestCase):
         concrete_bounds_invalid = np.array([[1, -1], [-1, 2], [3, 5]])
 
         self.assertTrue(self.bounds_relu._valid_concrete_bounds(concrete_bounds_valid))
-        self.assertFalse(self.bounds_relu._valid_concrete_bounds(concrete_bounds_invalid))
+        self.assertFalse(
+            self.bounds_relu._valid_concrete_bounds(concrete_bounds_invalid)
+        )
 
     def test_calc_relaxations(self):
 
@@ -134,13 +143,16 @@ class TestNNBounds(unittest.TestCase):
     def test_prop_equation_trough_relaxation(self):
 
         """
-        Tests the output from the _prop_equation_trough_relaxation() method against ground truth.
+        Tests the output from the _prop_equation_trough_relaxation() method against
+        ground truth.
         """
 
         symb_bounds = np.array([[-3, -2, -1]])
         relax = np.array(([[[0.5, 1]], [[0.5, 2]]]))
         gt_new_symb_bounds = np.array([[-1.5, -1, 0.5]])
-        new_symb_bounds = self.bounds_relu._prop_equation_trough_relaxation(symb_bounds, relax)
+        new_symb_bounds = self.bounds_relu._prop_equation_trough_relaxation(
+            symb_bounds, relax
+        )
 
         for i in range(gt_new_symb_bounds.shape[0]):
             for j in range(gt_new_symb_bounds.shape[1]):
@@ -149,7 +161,8 @@ class TestNNBounds(unittest.TestCase):
     def test_prop_error_matrix_trough_relaxation(self):
 
         """
-        Tests the output from the _prop_error_matrix_trough_relaxation() method against ground truth.
+        Tests the output from the _prop_error_matrix_trough_relaxation() method against
+        ground truth.
         """
 
         error_matrix = np.array([[-3, 1]])
@@ -157,10 +170,17 @@ class TestNNBounds(unittest.TestCase):
         bounds_concrete = np.array([[-1, 1]])
         error_matrix_to_node_indices = np.array([[1, 0], [1, 1]])
         layer_num = 2
-        new_error_matrix, error_matrix_to_node_indices = \
-            self.bounds_relu._prop_error_matrix_trough_relaxation(error_matrix, relax, bounds_concrete,
-                                                                  error_matrix_to_node_indices, layer_num)
-        gt_error_matrix = np.array(([[-1.5,  0.5,  1]]))
+        (
+            new_error_matrix,
+            error_matrix_to_node_indices,
+        ) = self.bounds_relu._prop_error_matrix_trough_relaxation(
+            error_matrix,
+            relax,
+            bounds_concrete,
+            error_matrix_to_node_indices,
+            layer_num,
+        )
+        gt_error_matrix = np.array(([[-1.5, 0.5, 1]]))
         gt_error_matrix_to_node_indices = np.array([[1, 0], [1, 1], [2, 0]])
 
         for i in range(gt_error_matrix.shape[0]):
@@ -169,17 +189,23 @@ class TestNNBounds(unittest.TestCase):
 
         for i in range(gt_error_matrix_to_node_indices.shape[0]):
             for j in range(gt_error_matrix_to_node_indices.shape[1]):
-                self.assertAlmostEqual(error_matrix_to_node_indices[i, j], gt_error_matrix_to_node_indices[i, j])
+                self.assertAlmostEqual(
+                    error_matrix_to_node_indices[i, j],
+                    gt_error_matrix_to_node_indices[i, j],
+                )
 
     def test_calculate_symbolic_bounds_sigmoid_brute_force(self):
 
         """
-        Tests that the neural network is within calculated bounds for a range of x values
+        Tests that the neural network is within calculated bounds for a range of x
+        values
         """
 
         x1_range = [-0.5, 1]
         x2_range = [-0.2, 0.6]
-        input_constraints = np.array([[x1_range[0], x1_range[1]], [x2_range[0], x2_range[1]]])
+        input_constraints = np.array(
+            [[x1_range[0], x1_range[1]], [x2_range[0], x2_range[1]]]
+        )
 
         x1_arr = np.linspace(x1_range[0], x1_range[1], 100)
         x2_arr = np.linspace(x2_range[0], x2_range[1], 100)
@@ -190,19 +216,26 @@ class TestNNBounds(unittest.TestCase):
         # Do a brute force check with different x values
         for x1 in x1_arr:
             for x2 in x2_arr:
-                res = self.model_sigmoid.forward(torch.Tensor([[x1, x2]])).detach().numpy()[0, 0]
+                res = (
+                    self.model_sigmoid.forward(torch.Tensor([[x1, x2]]))
+                    .detach()
+                    .numpy()[0, 0]
+                )
                 self.assertLessEqual(bound_symb[-1][:, 0], res)
                 self.assertGreaterEqual(bound_symb[-1][:, 1], res)
 
     def test_calculate_symbolic_bounds_tanh_brute_force(self):
 
         """
-        Tests that the neural network is within calculated bounds for a range of x values
+        Tests that the neural network is within calculated bounds for a range of x
+        values
         """
 
         x1_range = [-0.5, 1]
         x2_range = [-0.2, 0.6]
-        input_constraints = np.array([[x1_range[0], x1_range[1]], [x2_range[0], x2_range[1]]])
+        input_constraints = np.array(
+            [[x1_range[0], x1_range[1]], [x2_range[0], x2_range[1]]]
+        )
 
         x1_arr = np.linspace(x1_range[0], x1_range[1], 100)
         x2_arr = np.linspace(x2_range[0], x2_range[1], 100)
@@ -213,19 +246,26 @@ class TestNNBounds(unittest.TestCase):
         # Do a brute force check with different x values
         for x1 in x1_arr:
             for x2 in x2_arr:
-                res = self.model_tanh.forward(torch.Tensor([[x1, x2]])).detach().numpy()[0, 0]
+                res = (
+                    self.model_tanh.forward(torch.Tensor([[x1, x2]]))
+                    .detach()
+                    .numpy()[0, 0]
+                )
                 self.assertLessEqual(bound_symb[-1][:, 0], res)
                 self.assertGreaterEqual(bound_symb[-1][:, 1], res)
 
     def test_calculate_symbolic_bounds_relu_brute_force(self):
 
         """
-        Tests that the neural network is within calculated bounds for a range of x values
+        Tests that the neural network is within calculated bounds for a range of x
+        values
         """
 
         x1_range = [-1, 1]
         x2_range = [-2, 2]
-        input_constraints = np.array([[x1_range[0], x1_range[1]], [x2_range[0], x2_range[1]]])
+        input_constraints = np.array(
+            [[x1_range[0], x1_range[1]], [x2_range[0], x2_range[1]]]
+        )
 
         x1_arr = np.linspace(x1_range[0], x1_range[1], 100)
         x2_arr = np.linspace(x2_range[0], x2_range[1], 100)
@@ -236,10 +276,14 @@ class TestNNBounds(unittest.TestCase):
         # Do a brute force check with different x values
         for x1 in x1_arr:
             for x2 in x2_arr:
-                res = self.model_relu.forward(torch.Tensor([[x1, x2]])).detach().numpy()[0, 0]
+                res = (
+                    self.model_relu.forward(torch.Tensor([[x1, x2]]))
+                    .detach()
+                    .numpy()[0, 0]
+                )
                 self.assertLessEqual(bound_symb[-1][:, 0], res)
                 self.assertGreaterEqual(bound_symb[-1][:, 1], res)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

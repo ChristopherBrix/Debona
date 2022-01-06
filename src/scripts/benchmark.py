@@ -267,24 +267,24 @@ def run_benchmark(
                 )
                 solver_time += time.time() - start
 
-                if status == Status.Safe:
+                if status == Status.SAFE:
                     safe.append(i)
-                elif status == Status.Unsafe:
+                elif status == Status.UNSAFE:
                     unsafe.append(i)
-                elif status == Status.Undecided:
+                elif status == Status.UNDECIDED:
                     undecided.append(i)
-                elif status == Status.Underflow:
-                    benchmark_logger.warning(f"Underflow for image {i}")
+                elif status == Status.UNDERFLOW:
+                    benchmark_logger.warning(f"UNDERFLOW for image {i}")
                     underflow.append(i)
 
             f.write("\n")
             f.write(f"Time spent in solver: {solver_time}\n")
             f.write(f"Total number of images verified as safe: {len(safe)}\n")
-            f.write(f"Safe images: {safe}\n")
+            f.write(f"SAFE images: {safe}\n")
             f.write(f"Total number of images verified as unsafe: {len(unsafe)}\n")
-            f.write(f"Unsafe images: {unsafe}\n")
+            f.write(f"UNSAFE images: {unsafe}\n")
             f.write(f"Total number of images timed-out: {len(undecided)}\n")
             f.write(f"Timed-out images: {undecided}\n")
             f.write(f"Total number of images with underflow: {len(underflow)}\n")
-            f.write(f"Underflow images: {underflow}\n")
+            f.write(f"UNDERFLOW images: {underflow}\n")
             f.write("\n")

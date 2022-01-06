@@ -1,4 +1,3 @@
-
 """
 Unit-tests for the S-shaped mappings
 
@@ -6,13 +5,13 @@ Author: Patrick Henriksen <patrick@henriksen.as>
 """
 
 import unittest
+
 import numpy as np
 
 from src.algorithm.mappings.s_shaped import Sigmoid, Tanh
 
 
 class TestMappingSShaped(unittest.TestCase):
-
     def setUp(self):
 
         self.sigmoid = Sigmoid()
@@ -25,7 +24,7 @@ class TestMappingSShaped(unittest.TestCase):
         Sigmoid function used for calculating ground trouth values.
         """
 
-        return 1/(1 + np.exp(-x))
+        return 1 / (1 + np.exp(-x))
 
     def test_sigmoid_properties(self):
 
@@ -69,7 +68,9 @@ class TestMappingSShaped(unittest.TestCase):
 
         bounds = np.array([[-2.5, -1]])
         relax = self.sigmoid.linear_relaxation(bounds[:, 0], bounds[:, 1], upper=True)
-        gt_a = (self.s(bounds[0, 1]) - self.s(bounds[0, 0]))/(bounds[0, 1] - bounds[0, 0])
+        gt_a = (self.s(bounds[0, 1]) - self.s(bounds[0, 0])) / (
+            bounds[0, 1] - bounds[0, 0]
+        )
         gt_b = self.s(bounds[0, 1]) - (gt_a * bounds[0, 1])
         self.assertAlmostEqual(relax[0, 0], gt_a)
         self.assertAlmostEqual(relax[0, 1], gt_b)
@@ -78,8 +79,11 @@ class TestMappingSShaped(unittest.TestCase):
 
         bounds = np.array([[0, 2.5]])
         relax = self.sigmoid.linear_relaxation(bounds[:, 0], bounds[:, 1], upper=True)
-        tangent_point = ((bounds[:, 1]**2 - bounds[:, 0]**2)/(2*(bounds[:, 1] - bounds[:, 0])))[0]
-        gt_a = self.s(tangent_point) * (1-self.s(tangent_point))
+        tangent_point = (
+            (bounds[:, 1] ** 2 - bounds[:, 0] ** 2)
+            / (2 * (bounds[:, 1] - bounds[:, 0]))
+        )[0]
+        gt_a = self.s(tangent_point) * (1 - self.s(tangent_point))
         gt_b = self.s(tangent_point) - (gt_a * tangent_point)
 
         self.assertAlmostEqual(relax[0, 0], gt_a)
@@ -137,7 +141,9 @@ class TestMappingSShaped(unittest.TestCase):
 
         bounds = np.array([[-2.5, -1]])
         relax = self.tanh.linear_relaxation(bounds[:, 0], bounds[:, 1], upper=True)
-        gt_a = (np.tanh(bounds[0, 1]) - np.tanh(bounds[0, 0]))/(bounds[0, 1] - bounds[0, 0])
+        gt_a = (np.tanh(bounds[0, 1]) - np.tanh(bounds[0, 0])) / (
+            bounds[0, 1] - bounds[0, 0]
+        )
         gt_b = np.tanh(bounds[0, 1]) - (gt_a * bounds[0, 1])
         self.assertAlmostEqual(relax[0, 0], gt_a)
         self.assertAlmostEqual(relax[0, 1], gt_b)
@@ -146,8 +152,11 @@ class TestMappingSShaped(unittest.TestCase):
 
         bounds = np.array([[0, 2.5]])
         relax = self.tanh.linear_relaxation(bounds[:, 0], bounds[:, 1], upper=True)
-        tangent_point = ((bounds[:, 1]**2 - bounds[:, 0]**2)/(2*(bounds[:, 1] - bounds[:, 0])))[0]
-        gt_a = 1 - np.tanh(tangent_point)**2
+        tangent_point = (
+            (bounds[:, 1] ** 2 - bounds[:, 0] ** 2)
+            / (2 * (bounds[:, 1] - bounds[:, 0]))
+        )[0]
+        gt_a = 1 - np.tanh(tangent_point) ** 2
         gt_b = np.tanh(tangent_point) - (gt_a * tangent_point)
 
         self.assertAlmostEqual(relax[0, 0], gt_a)

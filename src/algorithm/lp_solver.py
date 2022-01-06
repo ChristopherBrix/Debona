@@ -1,15 +1,16 @@
 """
 This file contains the LPSolver part of the algorithm
 
-The LPSolver uses the symbolic bounds and the Gurobi solver to verify properties as Safe, or to produce candidates for
-counter examples.
+The LPSolver uses the symbolic bounds and the Gurobi solver to verify properties as
+SAFE, or to produce candidates for counter examples.
 
 Author: Patrick Henriksen <patrick@henriksen.as>
 """
 
 import os
-import numpy as np
+
 import gurobipy as grb
+import numpy as np
 
 from src.propagation.bound_propagation import bound_propagation
 
@@ -17,8 +18,8 @@ from src.propagation.bound_propagation import bound_propagation
 class LPSolver:
 
     """
-    The LPSolver class combines the symbolic bounds from bound_propagtion and Gurobi LPSolver to verify properties as safe
-    or produce candidates for counter examples
+    The LPSolver class combines the symbolic bounds from bound_propagtion and Gurobi
+    LPSolver to verify properties as safe or produce candidates for counter examples
     """
 
     def __init__(self, input_size: int, output_size: int):
@@ -34,8 +35,8 @@ class LPSolver:
         self._input_size = input_size
         self._output_size = output_size
 
-        self._input_variables = None
-        self._output_variables = None
+        self._input_variables: grb.tupledict = grb.tupledict()
+        self._output_variables: grb.tupledict = grb.tupledict()
 
         self._init_variables()
 
@@ -56,8 +57,8 @@ class LPSolver:
         """
         Initializes the Gurobi input and output variables
 
-        The default bounds on the variables are from the bound_propagation object. If output bounds are also given the
-        these are used to refine the bounds.
+        The default bounds on the variables are from the bound_propagation object. If
+        output bounds are also given the these are used to refine the bounds.
         """
 
         self._remove_variables()
@@ -86,12 +87,11 @@ class LPSolver:
         Removes all variables initialized from nn_bounds
         """
 
-        if self._input_variables is not None:
+        if len(self._input_variables) > 0:
             self.grb_solver.remove(self._input_variables)
-            self._input_variables = None
-        if self._output_variables is not None:
+            self._input_variables = []
+        if len(self._output_variables) > 0:
             self.grb_solver.remove(self._output_variables)
-            self._node_variables = None
 
         self._grb_solver.update()
 
@@ -100,9 +100,9 @@ class LPSolver:
         """
         Solves the system with current constraints
 
-        All variables are initialized to the given _input_bounds and _output_bounds. Symbolic interval propagation
-        is used to further refine the output bounds and to add the linear constraints on he output resulting from
-        the symbolic intervals.
+        All variables are initialized to the given _input_bounds and _output_bounds.
+        Symbolic interval propagation is used to further refine the output bounds and to
+        add the linear constraints on he output resulting from the symbolic intervals.
 
         Returns:
             True if the system is feasible, else False
@@ -122,36 +122,37 @@ class LPSolver:
             return False
         else:
             raise UnexpectedGurobiStatusException(
-                f"Gurobi _status: {self._grb_solver._status}"
+                f"Gurobi status: {self._grb_solver.status}"
             )
 
     # noinspection PyArgumentList
     def set_variable_bounds(
         self,
         bounds: bound_propagation,
-        output_bounds: np.array = None,
+        output_bounds: np.ndarray = None,
         set_input: bool = True,
     ):
 
         """
-        Sets the variable bounds using bounds from bound_propagation, and possibly output_bounds
+        Sets the variable bounds using bounds from bound_propagation, and possibly
+        output_bounds
 
         Args:
             bounds          : The bound_propagtion object
-            output_bounds   : A Nx2 array-like structure with the lower output bounds in the first and column
-                              and upper in the second. The tightest bounds from bound_propagtion and this array will
-                              be used
+            output_bounds   : A Nx2 array-like structure with the lower output bounds in
+                              the first and column and upper in the second. The tightest
+                              bounds from bound_propagtion and this array will be used
             set_input       : If False, the input variables aren't adjusted
         """
 
-        if self._input_variables is None or self._output_variables is None:
+        if len(self._input_variables) == 0 or len(self._output_variables) == 0:
             raise VariablesNotInitializedException(
                 "set_input_bounds() called before input variables where initialized"
             )
 
         if set_input:
-            input_bounds_lower = bounds.bounds_concrete[0][:, 0]
-            input_bounds_upper = bounds.bounds_concrete[0][:, 1]
+            input_bounds_lower = bounds.domain.bounds_concrete[0][:, 0]
+            input_bounds_upper = bounds.domain.bounds_concrete[0][:, 1]
 
             for node_num, var in enumerate(self._input_variables.select()):
                 var.lb, var.ub = (
@@ -159,8 +160,8 @@ class LPSolver:
                     input_bounds_upper[node_num],
                 )
 
-        output_bounds_lower = bounds.bounds_concrete[-1][:, 0].copy()
-        output_bounds_upper = bounds.bounds_concrete[-1][:, 1].copy()
+        output_bounds_lower = bounds.domain.bounds_concrete[-1][:, 0].copy()
+        output_bounds_upper = bounds.domain.bounds_concrete[-1][:, 1].copy()
 
         if output_bounds is not None:
             # Refine the output bounds using the given output_bounds array
@@ -193,13 +194,13 @@ class LPSolver:
             input_values = [var.x for var in self._input_variables.select()]
         except AttributeError:
             # Values not assigned, solve() probably hasn't been called
-            input_values = None
+            input_values = []
 
         try:
             output_values = [var.x for var in self._output_variables.select()]
         except AttributeError:
             # Values not assigned, solve() probably hasn't been called
-            output_values = None
+            output_values = []
 
         return np.array(input_values), np.array(output_values)
 

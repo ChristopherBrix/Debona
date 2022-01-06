@@ -8,7 +8,8 @@
     "python.linting.pylintArgs": [
         "--rcfile=src/setup.cfg",
         "--disable=F0401",
-        "--load-plugins=pylint.extensions.mccabe"
+        "--load-plugins=pylint.extensions.mccabe",
+        "--enable=fixme"
     ],
     "python.autoComplete.extraPaths": [
         "${workspaceRoot}/src"

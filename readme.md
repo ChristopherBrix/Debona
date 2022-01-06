@@ -22,8 +22,8 @@ $ pipenv install --dev
 
 VeriNet uses the Gurobi LP-solver which has a free academic license.  
 
-1) Go to https://www.gurobi.com, download Gurobi and get the license.  
-2) Follow the install instructions from http://abelsiqueira.github.io/blog/installing-gurobi-7-on-linux/  
+1) Go to https://www.gurobi.com, download Gurobi 9.5 and get the license.  
+2) Follow the install instructions from http://abelsiqueira.github.io/blog/_posts/2017/2017-03-13-installing-gurobi-7-on-linux/ 
 3) Activate pipenv by cd'ing into your VeriNet/src and typing $pipenv shell
 4) Find your python path by typing $which python
 5) cd into your Gurobi installation and run $<your python path> setup.py install

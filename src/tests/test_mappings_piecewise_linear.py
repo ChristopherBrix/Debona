@@ -1,4 +1,3 @@
-
 """
 Unit-tests for the piecewise linear mappings
 
@@ -6,13 +5,13 @@ Author: Patrick Henriksen <patrick@henriksen.as>
 """
 
 import unittest
+
 import numpy as np
 
 from src.algorithm.mappings.piecewise_linear import Relu
 
 
 class TestMappingPiecewiseLinear(unittest.TestCase):
-
     def setUp(self):
 
         self.relu = Relu()
@@ -55,7 +54,9 @@ class TestMappingPiecewiseLinear(unittest.TestCase):
         Test the linear_relaxation() for positive, negative and mixed bounds.
         """
 
-        relax = self.relu.linear_relaxation(np.array([-2.5]), np.array([-1]), upper=True)
+        relax = self.relu.linear_relaxation(
+            np.array([-2.5]), np.array([-1]), upper=True
+        )
 
         self.assertAlmostEqual(relax[0, 0], 0)
         self.assertAlmostEqual(relax[0, 1], 0)

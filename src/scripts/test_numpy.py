@@ -1,4 +1,3 @@
-
 """
 Small test for measuring the speed of numpy.
 
@@ -6,10 +5,12 @@ Can be used as an indication to check if OpenBLAS was installed successfully.
 
 Copied from: https://hunseblog.wordpress.com/2014/09/15/installing-numpy-and-openblas/
 """
+# pylint: disable-all
+
+import time
 
 import numpy as np
 import numpy.random as npr
-import time
 
 # --- Test 1
 N = 1
@@ -22,7 +23,7 @@ t = time.time()
 for i in range(N):
     C = np.dot(A, B)
 td = time.time() - t
-print("dotted two (%d,%d) matrices in %0.1f ms" % (n, n, 1e3*td/N))
+print("dotted two (%d,%d) matrices in %0.1f ms" % (n, n, 1e3 * td / N))
 
 # --- Test 2
 N = 100
@@ -35,7 +36,7 @@ t = time.time()
 for i in range(N):
     C = np.dot(A, B)
 td = time.time() - t
-print("dotted two (%d) vectors in %0.2f us" % (n, 1e6*td/N))
+print("dotted two (%d) vectors in %0.2f us" % (n, 1e6 * td / N))
 
 # --- Test 3
 m, n = (2000, 1000)

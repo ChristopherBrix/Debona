@@ -24,7 +24,8 @@ isort:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
         | { grep "\.py$" || test $? = 1; }
-        | xargs pipenv run isort --check-only /dev/null
+        | xargs --no-run-if-empty pipenv run isort --settings-file src/setup.cfg
+            --check-only
   only:
     - merge_requests
 
@@ -35,7 +36,8 @@ black:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
         | { grep "\.py$" || test $? = 1; }
-        | xargs pipenv run black --check --experimental-string-processing
+        | xargs --no-run-if-empty pipenv run black --check
+            --experimental-string-processing
   only:
     - merge_requests
 
@@ -46,7 +48,7 @@ flake8:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
         | { grep "\.py$" || test $? = 1; }
-        | xargs pipenv run flake8 --config=src/setup.cfg /dev/null
+        | xargs --no-run-if-empty pipenv run flake8 --config=src/setup.cfg
   only:
     - merge_requests
 
@@ -57,7 +59,7 @@ pylint:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
         | { grep "\.py$" || test $? = 1; }
-        | xargs pipenv run pylint --rcfile=src/setup.cfg /dev/null
+        | xargs --no-run-if-empty pipenv run pylint --rcfile=src/setup.cfg
   only:
     - merge_requests
 
@@ -68,7 +70,7 @@ mypy:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
         | { grep "\.py$" || test $? = 1; }
-        | xargs pipenv run mypy --config-file=src/setup.cfg --cache-dir=/cache/mypy
-            /dev/null
+        | xargs --no-run-if-empty pipenv run mypy --config-file=src/setup.cfg
+            --cache-dir=/cache/mypy
   only:
     - merge_requests
