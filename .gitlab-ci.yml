@@ -1,6 +1,7 @@
 stages:
   - setup
   - linting
+  - testing
 
 variables:
   TEST_IMAGE: $CI_REGISTRY_IMAGE:branch-$CI_COMMIT_REF_NAME
@@ -72,5 +73,30 @@ mypy:
         | { grep "\.py$" || test $? = 1; }
         | xargs --no-run-if-empty pipenv run mypy --config-file=src/setup.cfg
             --cache-dir=/cache/mypy
+  only:
+    - merge_requests
+
+example:
+  stage: testing
+  image: ${TEST_IMAGE}
+  script:
+    - cd ${CI_PROJECT_DIR}/example; pipenv run python example.py > output.txt
+    - |
+      echo "Running example run for local robustness verification objective:
+      Statistics for epsilon = 8:
+      Verification results: Status.SAFE
+      Branches explored: 9
+      Maximum depth reached: 3
+      Statistics for epsilon = 15:
+      Verification results: Status.UNSAFE
+      Branches explored: 1
+      Maximum depth reached: 0
+      Running example run with custom VeriNetNN and the local robustness verification objective:
+      Verification results: Status.SAFE
+      Branches explored: 15
+      Maximum depth reached: 4" > ${CI_PROJECT_DIR}/example/expected_output.txt
+    - diff -q ${CI_PROJECT_DIR}/example/expected_output.txt <(grep -f
+        ${CI_PROJECT_DIR}/example/expected_output.txt
+        ${CI_PROJECT_DIR}/example/output.txt)
   only:
     - merge_requests

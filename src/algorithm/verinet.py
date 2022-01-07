@@ -212,7 +212,6 @@ class VeriNet:
 
         self.logger.debug("Main process joining workers")
         for worker in self._workers:
-            print(worker)
             worker.join(self._worker_join_timeout)
             if worker.exitcode is None:
                 self.logger.warning(

@@ -15,7 +15,8 @@ RUN cd /opt && \
 ENV GUROBI_HOME="/opt/gurobi950/linux64"
 ENV PATH="${PATH}:${GUROBI_HOME}/bin"
 ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GUROBI_HOME}/lib"
-ENV GRB_LICENSE_FILE="$HOME/gurobi.lic"
+ENV GRB_LICENSE_FILE="$GUROBI_HOME/gurobi.lic"
+RUN printf "TOKENSERVER=license6.itc.rwth-aachen.de\nPORT=50039" > $GRB_LICENSE_FILE
 
 # Files needed for pipenv
 RUN mkdir nnvt && mkdir nnvt/src
