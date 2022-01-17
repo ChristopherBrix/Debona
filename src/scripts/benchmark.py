@@ -250,7 +250,7 @@ def run_benchmark(
                 # Run verification
                 start = time.time()
                 objective = LocalRobustnessObjective(
-                    int(targets[i]), input_bounds, output_size=11
+                    int(targets[i]), input_bounds, output_size=10
                 )
                 status = solver.verify(
                     objective,

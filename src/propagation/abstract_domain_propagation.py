@@ -2,38 +2,33 @@
 AbstractDomainPropagation is the basis for the concrete propagation techniques.
 """
 
+from abc import ABC, abstractmethod
 from typing import Optional
 
 import numpy as np
 
 from src.domains.abstract_domains import AbstractDomain
-from src.neural_networks.verinet_nn import VeriNetNN
 
 
-class AbstractDomainPropagation:
+class AbstractDomainPropagation(ABC):
 
     """
     Abstract class for the propagation of the domain
     """
 
-    def __init__(self, model: VeriNetNN, input_shape, domain: AbstractDomain):
-
+    def __init__(self, domain: AbstractDomain):
         """
         Args:
 
-            model                       : The VeriNetNN neural network as defined in
-                                          src/neural_networks/verinet_nn.py
-            input_shape                 : The shape of the input, (input_size,) for 1D
-                                          input or (channels, height, width) for 2D.
-            domain                      : The domain of the propagation method
+            domain: The domain of the propagation method
         """
-
-        self._domain = domain(model, input_shape)
+        self._domain = domain
 
     @property
     def domain(self):
         return self._domain
 
+    @abstractmethod
     def calc_bounds(self, input_constraints: np.ndarray, from_layer: int = 1) -> bool:
 
         """
@@ -57,26 +52,17 @@ class AbstractDomainPropagation:
             lower bound.
         """
 
-        raise NotImplementedError(
-            f"calc_bounds(...) not implemented in {self.__class__.__name__}"
-        )
-
+    @abstractmethod
     def merge_current_bounds_into_forced(self):
-
         """
         Sets forced input bounds to the best of current forced bounds and calculated
         bounds.
         """
 
-        raise NotImplementedError(
-            "merge_current_bounds_into_forced(...) not implemented in"
-            + f"{self.__class__.__name__}"
-        )
-
+    @abstractmethod
     def largest_error_split_node(
         self, output_weights: np.ndarray = None
     ) -> Optional[tuple]:
-
         """
         Returns the node with the largest weighted error effect on the output
 
@@ -92,8 +78,3 @@ class AbstractDomainPropagation:
         Returns:
               (layer_num, node_num) of the node with largest error effect on the output
         """
-
-        raise NotImplementedError(
-            "largest_error_split_node(...) not implemented in "
-            + f"{self.__class__.__name__}"
-        )

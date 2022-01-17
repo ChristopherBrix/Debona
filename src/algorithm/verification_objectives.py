@@ -15,7 +15,7 @@ import torch
 
 from src.algorithm.lp_solver import LPSolver
 from src.algorithm.verinet_util import Status
-from src.propagation.bound_propagation import bound_propagation
+from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 
 
 class VerificationObjective:
@@ -98,7 +98,7 @@ class VerificationObjective:
         return self._safe_classes
 
     # pylint: disable=unused-argument
-    def is_safe(self, bounds: bound_propagation) -> bool:
+    def is_safe(self, bounds: AbstractDomainPropagation) -> bool:
 
         """
         Can be implemented to check if the verification problem can be determined before
@@ -111,7 +111,9 @@ class VerificationObjective:
 
         return False
 
-    def output_refinement_weights(self, bounds: bound_propagation) -> np.ndarray:
+    def output_refinement_weights(
+        self, bounds: AbstractDomainPropagation
+    ) -> np.ndarray:
 
         """
         Should return an array with the importance weight of the different output for
@@ -130,7 +132,7 @@ class VerificationObjective:
         )
 
     def grad_descent_losses(
-        self, lp_output: torch.Tensor, bounds: bound_propagation
+        self, lp_output: torch.Tensor, bounds: AbstractDomainPropagation
     ) -> Callable:
 
         """
@@ -162,7 +164,7 @@ class VerificationObjective:
         raise NotImplementedError("is_counter_example() not implemented in subclass")
 
     def initial_settings(
-        self, solver: LPSolver, bounds: bound_propagation, safe_classes: list
+        self, solver: LPSolver, bounds: AbstractDomainPropagation, safe_classes: list
     ):
 
         """
@@ -184,7 +186,7 @@ class VerificationObjective:
 
     # noinspection PyTypeChecker
     def configure_next_potential_counter(
-        self, solver: LPSolver, bounds: bound_propagation
+        self, solver: LPSolver, bounds: AbstractDomainPropagation
     ) -> bool:
 
         """
@@ -274,7 +276,7 @@ class LocalRobustnessObjective(VerificationObjective):
         self.potential_counters: List[int] = []
         self.current_potential_counter: Optional[int] = None
 
-    def is_safe(self, bounds: bound_propagation) -> bool:
+    def is_safe(self, bounds: AbstractDomainPropagation) -> bool:
 
         """
         Returns true if the correct class minimum value is larger than all other classes
@@ -287,7 +289,7 @@ class LocalRobustnessObjective(VerificationObjective):
         return self.potential_counter(bounds).sum() == 0
 
     # noinspection PyUnresolvedReferences
-    def potential_counter(self, bounds: bound_propagation) -> np.ndarray:
+    def potential_counter(self, bounds: AbstractDomainPropagation) -> np.ndarray:
 
         """
         Finds the classes that are potential counter examples.
@@ -311,7 +313,9 @@ class LocalRobustnessObjective(VerificationObjective):
         return potential_counter
 
     # noinspection PyUnresolvedReferences
-    def output_refinement_weights(self, bounds: bound_propagation) -> np.ndarray:
+    def output_refinement_weights(
+        self, bounds: AbstractDomainPropagation
+    ) -> np.ndarray:
 
         """
         Returns an array with the importance weights for refinement
@@ -339,7 +343,7 @@ class LocalRobustnessObjective(VerificationObjective):
         return output_weights
 
     def grad_descent_losses(
-        self, lp_output: torch.Tensor, bounds: bound_propagation
+        self, lp_output: torch.Tensor, bounds: AbstractDomainPropagation
     ) -> Callable:
 
         """
@@ -369,7 +373,7 @@ class LocalRobustnessObjective(VerificationObjective):
 
     # noinspection PyArgumentList,PyUnresolvedReferences
     def initial_settings(
-        self, solver: LPSolver, bounds: bound_propagation, safe_classes: list
+        self, solver: LPSolver, bounds: AbstractDomainPropagation, safe_classes: list
     ):
 
         """
@@ -408,7 +412,7 @@ class LocalRobustnessObjective(VerificationObjective):
             solver.output_variables[self.correct_class].ub = potential_counter_max
 
     def configure_next_potential_counter(
-        self, solver: LPSolver, bounds: bound_propagation
+        self, solver: LPSolver, bounds: AbstractDomainPropagation
     ) -> bool:
 
         """

@@ -12,7 +12,7 @@ import numpy as np
 from gurobipy.gurobipy import Constr
 
 from src.algorithm.lp_solver import LPSolver
-from src.propagation.bound_propagation import bound_propagation
+from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 
 
 class Status(Enum):
@@ -76,7 +76,7 @@ class Branch:
 
     @staticmethod
     def add_constr_to_solver(
-        bounds: bound_propagation, lp_solver: LPSolver, split: np.ndarray
+        bounds: AbstractDomainPropagation, lp_solver: LPSolver, split: np.ndarray
     ) -> grb.Constr:
 
         """
@@ -133,7 +133,7 @@ class Branch:
         solver.grb_solver.update()
 
     def add_all_constrains(
-        self, bounds: bound_propagation, solver: LPSolver, split_list: list
+        self, bounds: AbstractDomainPropagation, solver: LPSolver, split_list: list
     ):
 
         """
@@ -161,7 +161,7 @@ class Branch:
 
     def update_constrs(
         self,
-        bounds: bound_propagation,
+        bounds: AbstractDomainPropagation,
         solver: LPSolver,
         old_split_list: list,
         old_constr_list: List[Constr],

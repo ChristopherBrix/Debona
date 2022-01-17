@@ -8,17 +8,25 @@ import numpy as np
 
 from src.algorithm.esip_util import concretise_symbolic_bounds_jit, sum_error_jit
 from src.algorithm.mappings.abstract_mapping import AbstractMapping
+from src.domains.deep_poly import DeepPoly
+from src.neural_networks.verinet_nn import VeriNetNN
 from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 
 
 class DeepPolyPropagation(AbstractDomainPropagation):
-
     """Class that implements the DeepPoly algorithm"""
 
-    def calc_bounds(self, input_constraints: np.ndarray, from_layer: int = 1) -> bool:
-        raise NotImplementedError(
-            f"calc_bounds(...) not implemented in {self.__class__.__name__}"
-        )
+    def __init__(self, model: VeriNetNN, input_shape):
+        """
+        Args:
+
+            model                       : The VeriNetNN neural network as defined in
+                                          src/neural_networks/verinet_nn.py
+            input_shape                 : The shape of the input, (input_size,) for 1D
+                                          input or (channels, height, width) for 2D.
+        """
+        domain = DeepPoly(model, input_shape)
+        super().__init__(domain)
 
     def merge_current_bounds_into_forced(self):
 
@@ -27,30 +35,29 @@ class DeepPolyPropagation(AbstractDomainPropagation):
         bounds.
         """
 
-        for i in range(self.domain.num_layers):
-
-            if self.domain.bounds_concrete[i] is None:
+        for i in range(self._domain.num_layers):
+            if self._domain.bounds_concrete[i] is None:
                 continue
 
-            elif self.domain.forced_input_bounds[i] is None:
-                self.domain.forced_input_bounds[i] = self.domain.bounds_concrete[i]
+            elif self._domain.forced_input_bounds[i] is None:
+                self._domain.forced_input_bounds[i] = self._domain.bounds_concrete[i]
 
             else:
                 better_lower = (
-                    self.domain.forced_input_bounds[i][:, 0]
-                    < self.domain.bounds_concrete[i][:, 0]
+                    self._domain.forced_input_bounds[i][:, 0]
+                    < self._domain.bounds_concrete[i][:, 0]
                 )
-                self.domain.forced_input_bounds[i][
+                self._domain.forced_input_bounds[i][
                     better_lower, 0
-                ] = self.domain.bounds_concrete[i][better_lower, 0]
+                ] = self._domain.bounds_concrete[i][better_lower, 0]
 
                 better_upper = (
-                    self.domain.forced_input_bounds[i][:, 1]
-                    > self.domain.bounds_concrete[i][:, 1]
+                    self._domain.forced_input_bounds[i][:, 1]
+                    > self._domain.bounds_concrete[i][:, 1]
                 )
-                self.domain.forced_input_bounds[i][
+                self._domain.forced_input_bounds[i][
                     better_upper, 1
-                ] = self.domain.bounds_concrete[i][better_upper, 1]
+                ] = self._domain.bounds_concrete[i][better_upper, 1]
 
     def largest_error_split_node(
         self, output_weights: np.ndarray = None
@@ -72,19 +79,19 @@ class DeepPolyPropagation(AbstractDomainPropagation):
               (layer_num, node_num) of the node with largest error effect on the output
         """
 
-        if self.domain.error_matrix[-1].shape[1] == 0:
+        if self._domain.error_matrix[-1].shape[1] == 0:
             return None
 
         output_weights = (
-            np.ones((self.domain.layer_sizes[-1], 2))
+            np.ones((self._domain.layer_sizes[-1], 2))
             if output_weights is None
             else output_weights
         )
         output_weights[output_weights <= 0] = 0.01
 
-        err_matrix_neg = self.domain.error_matrix[-1].copy()
+        err_matrix_neg = self._domain.error_matrix[-1].copy()
         err_matrix_neg[err_matrix_neg > 0] = 0
-        err_matrix_pos = self.domain.error_matrix[-1].copy()
+        err_matrix_pos = self._domain.error_matrix[-1].copy()
         err_matrix_pos[err_matrix_pos < 0] = 0
 
         err_matrix_neg = -err_matrix_neg * output_weights[:, 0:1]
@@ -96,7 +103,7 @@ class DeepPolyPropagation(AbstractDomainPropagation):
         if weighted_error[max_err_idx] <= 0:
             return None
         else:
-            return self.domain.error_matrix_to_node_indices[-1][max_err_idx]
+            return self._domain.error_matrix_to_node_indices[-1][max_err_idx]
 
 
 class DeepPolyForwardPropagation(DeepPolyPropagation):
@@ -131,28 +138,28 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
             input_constraints, np.ndarray
         ), "input_constraints should be a np array"
 
-        self.domain.bounds_concrete[0] = input_constraints
+        self._domain.bounds_concrete[0] = input_constraints
 
         # Concrete bounds from previous layer might have to be recalculated due to new
         # split-constraints
         if from_layer > 1:
             (
-                self.domain.bounds_concrete[from_layer - 1],
-                self.domain.error[from_layer - 1],
+                self._domain.bounds_concrete[from_layer - 1],
+                self._domain.error[from_layer - 1],
             ) = self._calc_bounds_concrete_jit(
-                self.domain.bounds_concrete[0],
-                self.domain.bounds_symbolic[from_layer - 1],
-                self.domain.error_matrix[from_layer - 1],
+                self._domain.bounds_concrete[0],
+                self._domain.bounds_symbolic[from_layer - 1],
+                self._domain.error_matrix[from_layer - 1],
             )
 
-            self.domain.bounds_concrete[
+            self._domain.bounds_concrete[
                 from_layer - 1
             ] = self._adjust_bounds_from_forced_bounds(
-                self.domain.bounds_concrete[from_layer - 1],
-                self.domain.forced_input_bounds[from_layer - 1],
+                self._domain.bounds_concrete[from_layer - 1],
+                self._domain.forced_input_bounds[from_layer - 1],
             )
 
-        for layer_num in range(from_layer, self.domain.num_layers):
+        for layer_num in range(from_layer, self._domain.num_layers):
 
             success = self._prop_bounds_and_errors(layer_num)
             if not success:
@@ -175,64 +182,66 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
             True if the resulting concrete bounds are valid, else false.
         """
 
-        mapping = self.domain.mappings[layer_num]
+        mapping = self._domain.mappings[layer_num]
 
         if mapping.is_linear:
-            self.domain.bounds_symbolic[layer_num] = mapping.propagate(
-                self.domain.bounds_symbolic[layer_num - 1], add_bias=True
+            self._domain.bounds_symbolic[layer_num] = mapping.propagate(
+                self._domain.bounds_symbolic[layer_num - 1], add_bias=True
             )
-            self.domain.error_matrix[layer_num] = mapping.propagate(
-                self.domain.error_matrix[layer_num - 1], add_bias=False
+            self._domain.error_matrix[layer_num] = mapping.propagate(
+                self._domain.error_matrix[layer_num - 1], add_bias=False
             )
-            self.domain.error_matrix_to_node_indices[
+            self._domain.error_matrix_to_node_indices[
                 layer_num
-            ] = self.domain.error_matrix_to_node_indices[layer_num - 1].copy()
+            ] = self._domain.error_matrix_to_node_indices[layer_num - 1].copy()
 
         else:
-            self.domain.relaxations[layer_num] = self._calc_relaxations(
-                self.domain.mappings[layer_num],
-                self.domain.bounds_concrete[layer_num - 1],
+            self._domain.relaxations[layer_num] = self._calc_relaxations(
+                self._domain.mappings[layer_num],
+                self._domain.bounds_concrete[layer_num - 1],
             )
 
-            self.domain.bounds_symbolic[
+            self._domain.bounds_symbolic[
                 layer_num
             ] = self._prop_equation_trough_relaxation(
-                self.domain.bounds_symbolic[layer_num - 1],
-                self.domain.relaxations[layer_num],
+                self._domain.bounds_symbolic[layer_num - 1],
+                self._domain.relaxations[layer_num],
             )
 
             (
-                self.domain.error_matrix[layer_num],
-                self.domain.error_matrix_to_node_indices[layer_num],
+                self._domain.error_matrix[layer_num],
+                self._domain.error_matrix_to_node_indices[layer_num],
             ) = self._prop_error_matrix_trough_relaxation(
-                self.domain.error_matrix[layer_num - 1],
-                self.domain.relaxations[layer_num],
-                self.domain.bounds_concrete[layer_num - 1],
-                self.domain.error_matrix_to_node_indices[layer_num - 1],
+                self._domain.error_matrix[layer_num - 1],
+                self._domain.relaxations[layer_num],
+                self._domain.bounds_concrete[layer_num - 1],
+                self._domain.error_matrix_to_node_indices[layer_num - 1],
                 layer_num,
             )
 
         if mapping.is_1d_to_1d:
-            self.domain.bounds_concrete[layer_num] = mapping.propagate(
-                self.domain.bounds_concrete[layer_num - 1]
+            self._domain.bounds_concrete[layer_num] = mapping.propagate(
+                self._domain.bounds_concrete[layer_num - 1]
             )
 
         else:
             (
-                self.domain.bounds_concrete[layer_num],
-                self.domain.error[layer_num],
+                self._domain.bounds_concrete[layer_num],
+                self._domain.error[layer_num],
             ) = self._calc_bounds_concrete_jit(
-                self.domain.bounds_concrete[0],
-                self.domain.bounds_symbolic[layer_num],
-                self.domain.error_matrix[layer_num],
+                self._domain.bounds_concrete[0],
+                self._domain.bounds_symbolic[layer_num],
+                self._domain.error_matrix[layer_num],
             )
 
-        self.domain.bounds_concrete[layer_num] = self._adjust_bounds_from_forced_bounds(
-            self.domain.bounds_concrete[layer_num],
-            self.domain.forced_input_bounds[layer_num],
+        self._domain.bounds_concrete[
+            layer_num
+        ] = self._adjust_bounds_from_forced_bounds(
+            self._domain.bounds_concrete[layer_num],
+            self._domain.forced_input_bounds[layer_num],
         )
 
-        return self._valid_concrete_bounds(self.domain.bounds_concrete[layer_num])
+        return self._valid_concrete_bounds(self._domain.bounds_concrete[layer_num])
 
     @staticmethod
     def _calc_bounds_concrete_jit(

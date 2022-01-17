@@ -18,8 +18,9 @@ from src.algorithm.lp_solver import LPSolver
 from src.algorithm.verification_objectives import VerificationObjective
 from src.algorithm.verinet_util import Branch, Status
 from src.neural_networks.verinet_nn import VeriNetNN
-from src.propagation.bound_propagation import bound_propagation
+from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 from src.propagation.deep_poly_propagation import BoundsException
+from src.util import config
 
 
 class VeriNetWorker:
@@ -71,7 +72,7 @@ class VeriNetWorker:
         self._counter_example: Optional[np.ndarray] = None
 
         self._lp_solver: LPSolver = None
-        self._bounds: bound_propagation.propagation_method = None
+        self._bounds: AbstractDomainPropagation = None
 
         self._branches: deque = deque([])
 
@@ -88,10 +89,6 @@ class VeriNetWorker:
     def status(self) -> Status:
         return self._status
 
-    @property
-    def bounds(self) -> bound_propagation:
-        return self._bounds
-
     def _init_bounds(self):
 
         """
@@ -99,10 +96,8 @@ class VeriNetWorker:
         """
 
         try:
-            self._bounds = bound_propagation.propagation_method(
-                self._model,
-                self._verification_objective.input_shape,
-                bound_propagation.domain,
+            self._bounds = config.DOMAIN_PROPAGATION(
+                self._model, self._verification_objective.input_shape
             )
         except BoundsException as e:
             raise VeriNetException(
@@ -416,7 +411,7 @@ class VeriNetWorker:
         refine_output_weights = self._verification_objective.output_refinement_weights(
             self._bounds
         )
-        split = self.bounds.largest_error_split_node(
+        split = self._bounds.largest_error_split_node(
             output_weights=refine_output_weights
         )
         if split is None:

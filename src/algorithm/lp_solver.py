@@ -12,7 +12,7 @@ import os
 import gurobipy as grb
 import numpy as np
 
-from src.propagation.bound_propagation import bound_propagation
+from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 
 
 class LPSolver:
@@ -128,7 +128,7 @@ class LPSolver:
     # noinspection PyArgumentList
     def set_variable_bounds(
         self,
-        bounds: bound_propagation,
+        bounds: AbstractDomainPropagation,
         output_bounds: np.ndarray = None,
         set_input: bool = True,
     ):

@@ -14,11 +14,6 @@ class StarSetPropagation(AbstractDomainPropagation):
 
     """Class that implements the StarSet algorithm"""
 
-    def calc_bounds(self, input_constraints: np.ndarray, from_layer: int = 1) -> bool:
-        raise NotImplementedError(
-            f"calc_bounds(...) not implemented in {self.__class__.__name__}"
-        )
-
     # TODO: for star sets should not be very different from deeppoly
     def merge_current_bounds_into_forced(self):
         pass
