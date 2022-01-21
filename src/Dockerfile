@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM ubuntu:20.04
+FROM ubuntu:20.04 AS base
 
 # Basic setup
 RUN apt-get update
@@ -19,10 +19,11 @@ ENV GRB_LICENSE_FILE="$GUROBI_HOME/gurobi.lic"
 RUN printf "TOKENSERVER=license6.itc.rwth-aachen.de\nPORT=50039" > $GRB_LICENSE_FILE
 
 # Files needed for pipenv
-RUN mkdir nnvt && mkdir nnvt/src
-COPY src/Pipfile /nnvt/src/Pipfile
-COPY src/Pipfile.lock /nnvt/src/Pipfile.lock
-COPY src/.env /nnvt/src/.env
+WORKDIR /nnvt
+RUN mkdir src
+COPY src/Pipfile src/Pipfile
+COPY src/Pipfile.lock src/Pipfile.lock
+COPY src/.env src/.env
 
 # pipenv
 RUN python3.8 -m pip install pipenv==11.9.0
@@ -30,5 +31,10 @@ ENV PIPENV_VENV_IN_PROJECT="enabled"
 ENV PIPENV_CACHE_DIR=".cache/pipenv"
 ENV PIP_CACHE_DIR=".cache/pip"
 ENV PIPENV_PIPFILE="/nnvt/src/Pipfile"
+ENV SHELL="/bin/bash"
+ENV LANG="en_US.UTF-8"
 RUN pipenv install --dev
 RUN cd $GUROBI_HOME && pipenv run python setup.py install
+
+FROM base as complete
+COPY . .
