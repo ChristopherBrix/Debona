@@ -17,7 +17,8 @@ build_docker_base:
     - docker:19.03.12-dind
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -t ${TEST_IMAGE} --target base -f ${CI_PROJECT_DIR}/src/Dockerfile .
+    - docker build -t ${TEST_IMAGE} --target base
+        --cache-from=ubuntu:20.04,${TEST_IMAGE} -f ${CI_PROJECT_DIR}/src/Dockerfile .
     - docker push ${TEST_IMAGE}
   only:
     - merge_requests
@@ -112,8 +113,8 @@ build_docker_complete:
     - docker:19.03.12-dind
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -t ${TEST_IMAGE_WITH_CODE} --target complete -f
-        ${CI_PROJECT_DIR}/src/Dockerfile .
+    - docker build -t ${TEST_IMAGE_WITH_CODE} --target complete
+        --cache-from=ubuntu:20.04,${TEST_IMAGE} -f ${CI_PROJECT_DIR}/src/Dockerfile .
     - docker push ${TEST_IMAGE_WITH_CODE}
   only:
     - merge_requests

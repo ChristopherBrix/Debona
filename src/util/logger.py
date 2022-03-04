@@ -23,8 +23,7 @@ def get_logger(level, name: str, directory: str, filename: str):
         The logger
     """
 
-    if not os.path.isdir(directory):
-        os.mkdir(directory)
+    os.makedirs(directory, exist_ok=True)
 
     logger = logging.getLogger(name)
     logger.setLevel(level)
