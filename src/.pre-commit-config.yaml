@@ -5,6 +5,7 @@ repos:
     name: isort
     entry: isort
     language: system
+    args: ['--settings-path=src/setup.cfg']
     files: \.py$
   - id: black
     name: black

@@ -11,8 +11,10 @@ from typing import List, Optional
 
 import numpy as np
 
+from src.algorithm.branch import Branch
+from src.algorithm.status import Status
+from src.algorithm.task_constants import TaskConstants
 from src.algorithm.verification_objectives import VerificationObjective
-from src.algorithm.verinet_util import Branch, Status
 from src.algorithm.verinet_worker import VeriNetWorker
 from src.neural_networks.verinet_nn import VeriNetNN
 from src.util.config import LOGS_LEVEL
@@ -28,7 +30,6 @@ class VeriNet:
 
     def __init__(
         self,
-        model: VeriNetNN,
         gradient_descent_max_iters: int = 5,
         gradient_descent_step: float = 1e-1,
         gradient_descent_min_loss_change: float = 1e-2,
@@ -38,9 +39,6 @@ class VeriNet:
 
         """
         Args:
-            model                           : The torch neural network, the
-                                              requires_grad parameters of this model
-                                              might be changed.
             gradient_descent_max_iters      : The number of iterations used in gradient
                                               descent to find a true counter
                                               example from a _lp_solver counter example
@@ -57,8 +55,6 @@ class VeriNet:
                                               than this, the branch will be put into a
                                               queue for other processes.
         """
-
-        self._model_nn = model
 
         self._gradient_descent_max_iters = gradient_descent_max_iters
         self._gradient_descent_step = gradient_descent_step
@@ -88,6 +84,8 @@ class VeriNet:
         self._finished_flag = mp.Event()
         self._all_children_done = mp.Event()
 
+        self._task_constants: TaskConstants = None
+
         self.logger = get_logger(LOGS_LEVEL, __name__, "../../logs/", "verinet_log")
 
     @property
@@ -108,6 +106,7 @@ class VeriNet:
 
     def verify(
         self,
+        model: VeriNetNN,
         verification_objective: VerificationObjective,
         gradient_descent_intervals: int = 5,
         timeout: float = 3600,
@@ -119,6 +118,9 @@ class VeriNet:
         Starts the verification process
 
         Args:
+            model                           : The torch neural network, the
+                                              requires_grad parameters of this model
+                                              might be changed.
             verification_objective          : The VerificationObjective
             no_split                        : If true no splitting is done
             timeout                         : The maximum time the process will run
@@ -143,12 +145,14 @@ class VeriNet:
         self._no_split = no_split
         self._verbose = verbose
 
+        self._task_constants = TaskConstants(model, verification_objective.input_shape)
+
         if self.status != Status.UNDECIDED:
             return self._status
 
         self._reset_mp_params()
 
-        branch = Branch(0, None, [])
+        branch = Branch(0, [None] * self._task_constants.num_layers, [])
         self._put_branch(branch)  # Add initial branch
         self.logger.debug(f"Main process put first branch {branch} on queue")
 
@@ -227,7 +231,7 @@ class VeriNet:
 
         while True:
             solver = VeriNetWorker(
-                self._model_nn,
+                self._task_constants,
                 verification_objective=deepcopy(self._verification_objective),
                 no_split=self._no_split,
                 gradient_descent_intervals=self._gradient_descent_intervals,

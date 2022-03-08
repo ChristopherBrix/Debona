@@ -3,10 +3,11 @@ AbstractDomainPropagation is the basis for the concrete propagation techniques.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 
+from src.algorithm.task_constants import TaskConstants
 from src.domains.abstract_domains import AbstractDomain
 
 
@@ -16,12 +17,13 @@ class AbstractDomainPropagation(ABC):
     Abstract class for the propagation of the domain
     """
 
-    def __init__(self, domain: AbstractDomain):
+    def __init__(self, task_constants: TaskConstants, domain: AbstractDomain):
         """
         Args:
-
+            task_constants: The constant parameters of this task
             domain: The domain of the propagation method
         """
+        self._task_constants = task_constants
         self._domain = domain
 
     @property
@@ -29,7 +31,12 @@ class AbstractDomainPropagation(ABC):
         return self._domain
 
     @abstractmethod
-    def calc_bounds(self, input_constraints: np.ndarray, from_layer: int = 1) -> bool:
+    def calc_bounds(
+        self,
+        input_constraints: np.ndarray,
+        forced_input_bounds: List[np.ndarray],
+        from_layer: int = 1,
+    ) -> bool:
 
         """
         Calculate the bounds for all layers in the network starting at from_layer.
@@ -44,19 +51,13 @@ class AbstractDomainPropagation(ABC):
                                       should be the same as the input to the neural
                                       network, the last dimension should contain the
                                       lower bound on axis 0 and the upper on axis 1.
+            forced_input_bounds     : Known input bounds that must be enforced
             from_layer              : Updates this layer and all later layers
 
         Returns:
             True if the method succeeds, False if the bounds are invalid. The bounds are
             invalid if the forced bounds make at least one upper bound smaller than a
             lower bound.
-        """
-
-    @abstractmethod
-    def merge_current_bounds_into_forced(self):
-        """
-        Sets forced input bounds to the best of current forced bounds and calculated
-        bounds.
         """
 
     @abstractmethod

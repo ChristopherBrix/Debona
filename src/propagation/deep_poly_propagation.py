@@ -2,62 +2,26 @@
 Propagation using DeepPoly.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 
 from src.algorithm.esip_util import concretise_symbolic_bounds_jit, sum_error_jit
 from src.algorithm.mappings.abstract_mapping import AbstractMapping
+from src.algorithm.task_constants import TaskConstants
 from src.domains.deep_poly import DeepPoly
-from src.neural_networks.verinet_nn import VeriNetNN
 from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 
 
 class DeepPolyPropagation(AbstractDomainPropagation):
     """Class that implements the DeepPoly algorithm"""
 
-    def __init__(self, model: VeriNetNN, input_shape):
+    def __init__(self, task_constants: TaskConstants):
         """
         Args:
-
-            model                       : The VeriNetNN neural network as defined in
-                                          src/neural_networks/verinet_nn.py
-            input_shape                 : The shape of the input, (input_size,) for 1D
-                                          input or (channels, height, width) for 2D.
+            task_constants: The constant parameters of this task
         """
-        domain = DeepPoly(model, input_shape)
-        super().__init__(domain)
-
-    def merge_current_bounds_into_forced(self):
-
-        """
-        Sets forced input bounds to the best of current forced bounds and calculated
-        bounds.
-        """
-
-        for i in range(self._domain.num_layers):
-            if self._domain.bounds_concrete[i] is None:
-                continue
-
-            elif self._domain.forced_input_bounds[i] is None:
-                self._domain.forced_input_bounds[i] = self._domain.bounds_concrete[i]
-
-            else:
-                better_lower = (
-                    self._domain.forced_input_bounds[i][:, 0]
-                    < self._domain.bounds_concrete[i][:, 0]
-                )
-                self._domain.forced_input_bounds[i][
-                    better_lower, 0
-                ] = self._domain.bounds_concrete[i][better_lower, 0]
-
-                better_upper = (
-                    self._domain.forced_input_bounds[i][:, 1]
-                    > self._domain.bounds_concrete[i][:, 1]
-                )
-                self._domain.forced_input_bounds[i][
-                    better_upper, 1
-                ] = self._domain.bounds_concrete[i][better_upper, 1]
+        super().__init__(task_constants, DeepPoly(task_constants))
 
     def largest_error_split_node(
         self, output_weights: np.ndarray = None
@@ -109,7 +73,12 @@ class DeepPolyPropagation(AbstractDomainPropagation):
 class DeepPolyForwardPropagation(DeepPolyPropagation):
     """Class that implements the DeepPoly forward propagation algorithm"""
 
-    def calc_bounds(self, input_constraints: np.ndarray, from_layer: int = 1) -> bool:
+    def calc_bounds(
+        self,
+        input_constraints: np.ndarray,
+        forced_input_bounds: List[np.ndarray],
+        from_layer: int = 1,
+    ) -> bool:
 
         """
         Calculate the bounds for all layers in the network starting at from_layer.
@@ -125,6 +94,7 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
                                       input to the neural network, the last dimension
                                       should contain the lower bound on axis 0 and the
                                       upper on axis 1.
+            forced_input_bounds     : Known input bounds that must be enforced
             from_layer              : Updates this layer and all later layers
 
         Returns:
@@ -156,18 +126,20 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
                 from_layer - 1
             ] = self._adjust_bounds_from_forced_bounds(
                 self._domain.bounds_concrete[from_layer - 1],
-                self._domain.forced_input_bounds[from_layer - 1],
+                forced_input_bounds[from_layer - 1],
             )
 
-        for layer_num in range(from_layer, self._domain.num_layers):
+        for layer_num in range(from_layer, self._task_constants.num_layers):
 
-            success = self._prop_bounds_and_errors(layer_num)
+            success = self._prop_bounds_and_errors(layer_num, forced_input_bounds)
             if not success:
                 return False
 
         return True
 
-    def _prop_bounds_and_errors(self, layer_num: int) -> bool:
+    def _prop_bounds_and_errors(
+        self, layer_num: int, forced_input_bounds: List[np.ndarray]
+    ) -> bool:
 
         """
         Calculates the symbolic input bounds.
@@ -177,12 +149,13 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
 
         Args:
             layer_num: The layer number
+            forced_input_bounds: Known input bounds that must be enforced
 
         Returns:
             True if the resulting concrete bounds are valid, else false.
         """
 
-        mapping = self._domain.mappings[layer_num]
+        mapping = self._task_constants.mappings[layer_num]
 
         if mapping.is_linear:
             self._domain.bounds_symbolic[layer_num] = mapping.propagate(
@@ -197,7 +170,7 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
 
         else:
             self._domain.relaxations[layer_num] = self._calc_relaxations(
-                self._domain.mappings[layer_num],
+                mapping,
                 self._domain.bounds_concrete[layer_num - 1],
             )
 
@@ -238,7 +211,7 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
             layer_num
         ] = self._adjust_bounds_from_forced_bounds(
             self._domain.bounds_concrete[layer_num],
-            self._domain.forced_input_bounds[layer_num],
+            forced_input_bounds[layer_num],
         )
 
         return self._valid_concrete_bounds(self._domain.bounds_concrete[layer_num])

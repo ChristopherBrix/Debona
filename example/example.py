@@ -7,9 +7,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from src.algorithm.status import Status
 from src.algorithm.verification_objectives import LocalRobustnessObjective
 from src.algorithm.verinet import VeriNet
-from src.algorithm.verinet_util import Status
 from src.data_loader.input_data_loader import load_mnist_human_readable
 from src.data_loader.nnet import NNET
 from src.neural_networks.verinet_nn import VeriNetNN
@@ -41,7 +41,7 @@ def local_robustnes_nnet():
     model = nnet.from_nnet_to_verinet_nn()
 
     # Initialize the solver
-    solver = VeriNet(model, max_procs=20)
+    solver = VeriNet(max_procs=20)
 
     # Load the image and use the predicted class as correct class
     image = load_mnist_human_readable(
@@ -59,7 +59,7 @@ def local_robustnes_nnet():
         objective = LocalRobustnessObjective(
             correct_class, input_bounds, output_size=10
         )
-        solver.verify(objective, timeout=3600, no_split=False, verbose=False)
+        solver.verify(model, objective, timeout=3600, no_split=False, verbose=False)
 
         # Store the counter example if UNSAFE. Status enum is defined in
         # src.algorithm.verinet_util
@@ -96,11 +96,11 @@ def verinet_nn_example():
 
     input_bounds = np.array([[-10, 10], [-10, 10]])
 
-    solver = VeriNet(model, max_procs=20)
+    solver = VeriNet(max_procs=20)
     objective = LocalRobustnessObjective(
         correct_class=1, input_bounds=input_bounds, output_size=2
     )
-    solver.verify(objective, timeout=3600, no_split=False, verbose=False)
+    solver.verify(model, objective, timeout=3600, no_split=False, verbose=False)
 
     # Store the counter example if UNSAFE. Status enum is defined in
     # src.algorithm.verinet_util

@@ -14,9 +14,11 @@ import numpy as np
 import torch
 import torch.optim as optim
 
+from src.algorithm.branch import Branch
 from src.algorithm.lp_solver import LPSolver
+from src.algorithm.status import Status
+from src.algorithm.task_constants import TaskConstants
 from src.algorithm.verification_objectives import VerificationObjective
-from src.algorithm.verinet_util import Branch, Status
 from src.neural_networks.verinet_nn import VeriNetNN
 from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 from src.propagation.deep_poly_propagation import BoundsException
@@ -26,7 +28,7 @@ from src.util import config
 class VeriNetWorker:
     def __init__(
         self,
-        model: VeriNetNN,
+        task_constants: TaskConstants,
         verification_objective: VerificationObjective,
         no_split: bool = False,
         gradient_descent_intervals: int = 5,
@@ -38,9 +40,7 @@ class VeriNetWorker:
 
         """
         Args:
-            model                           : The torch neural network, the
-                                              requires_grad parameters of this model
-                                              might be changed.
+            task_constants                  : The constant parameters of this task
             verification_objective          : The VerificationObjective
             no_split                        : If true no splitting is done
             verbose                         : If true information is printed at each
@@ -59,7 +59,7 @@ class VeriNetWorker:
                                               descent
         """
 
-        self._model = model
+        self._task_constants = task_constants
         self._verification_objective = verification_objective
         self._no_split = no_split
         self._gradient_descent_intervals = gradient_descent_intervals
@@ -76,7 +76,9 @@ class VeriNetWorker:
 
         self._branches: deque = deque([])
 
-        self._set_parameters_requires_grad(model=model, requires_grad=False)
+        self._set_parameters_requires_grad(
+            model=task_constants.model, requires_grad=False
+        )
 
         self.max_depth = 0
         self.branches_explored = 0
@@ -96,9 +98,7 @@ class VeriNetWorker:
         """
 
         try:
-            self._bounds = config.DOMAIN_PROPAGATION(
-                self._model, self._verification_objective.input_shape
-            )
+            self._bounds = config.DOMAIN_PROPAGATION(self._task_constants)
         except BoundsException as e:
             raise VeriNetException(
                 "Error initializing bound_propagation in VeriNet"
@@ -161,8 +161,7 @@ class VeriNetWorker:
         self.init_main_loop()
 
         current_branch = None
-        if start_branch.forced_input_bounds is None:
-            start_branch.forced_input_bounds = self._bounds.domain.forced_input_bounds
+        assert start_branch.forced_input_bounds is not None
 
         self._branches.append(start_branch)
 
@@ -385,8 +384,8 @@ class VeriNetWorker:
         """
 
         try:
-            self._model(x)
-            logits = self._model.logits
+            self._task_constants.model(x)
+            logits = self._task_constants.model.logits
             if len(logits.shape) == 1:
                 logits = logits.unsqueeze(0)
             return logits
@@ -420,10 +419,12 @@ class VeriNetWorker:
 
         lower = self._bounds.domain.bounds_concrete[layer - 1][node][0]
         upper = self._bounds.domain.bounds_concrete[layer - 1][node][1]
-        split_x = self._bounds.domain.mappings[layer].split_point(lower, upper)
+        split_x = self._task_constants.mappings[layer].split_point(lower, upper)
 
-        self._bounds.merge_current_bounds_into_forced()
-        forced_input_bounds = self._bounds.domain.forced_input_bounds
+        current_branch.merge_current_bounds_into_forced(
+            self._bounds.domain.bounds_concrete
+        )
+        forced_input_bounds = current_branch.forced_input_bounds
 
         # Add the lower split branch
         split_forced = [arr.copy() for arr in forced_input_bounds]
@@ -480,6 +481,7 @@ class VeriNetWorker:
 
             success = self._bounds.calc_bounds(
                 self._verification_objective.input_bounds_flat,
+                new_branch.forced_input_bounds,
                 from_layer=new_branch.split_list[-1]["layer"],
             )
 
@@ -496,13 +498,17 @@ class VeriNetWorker:
                 ]
             )
             success = self._bounds.calc_bounds(
-                self._verification_objective.input_bounds_flat, from_layer=min_layer
+                self._verification_objective.input_bounds_flat,
+                new_branch.forced_input_bounds,
+                from_layer=min_layer,
             )
 
         # First call, calculate all bounds
         else:
             success = self._bounds.calc_bounds(
-                self._verification_objective.input_bounds_flat, from_layer=1
+                self._verification_objective.input_bounds_flat,
+                new_branch.forced_input_bounds,
+                from_layer=1,
             )
 
         if not success:

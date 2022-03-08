@@ -14,7 +14,7 @@ import numpy as np
 import torch
 
 from src.algorithm.lp_solver import LPSolver
-from src.algorithm.verinet_util import Status
+from src.algorithm.status import Status
 from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 
 
@@ -334,7 +334,7 @@ class LocalRobustnessObjective(VerificationObjective):
         """
 
         potential_counter = self.potential_counter(bounds).nonzero()[0]
-        output_weights = np.zeros((bounds.domain.layer_sizes[-1], 2), dtype=float)
+        output_weights = np.zeros((self.output_size, 2), dtype=float)
         num_potential_counters = len(potential_counter)
 
         output_weights[potential_counter, 1] = 1

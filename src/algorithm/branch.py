@@ -1,10 +1,7 @@
 """
-Util classes for nn_bounds
-
-Author: Patrick Henriksen <patrick@henriksen.as>
+Branch object. Multiple branches are created during the verification, one per split.
 """
 
-from enum import Enum
 from typing import List
 
 import gurobipy as grb
@@ -15,23 +12,17 @@ from src.algorithm.lp_solver import LPSolver
 from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
 
 
-class Status(Enum):
-    """
-    For keeping track of the verification _status.
-    """
-
-    SAFE = 1
-    UNSAFE = 2
-    UNDECIDED = 3
-    UNDERFLOW = 4
-
-
 class Branch:
     """
     A class to keep track of the data needed when branching
     """
 
-    def __init__(self, depth: int, forced_input_bounds: np.ndarray, split_list: list):
+    def __init__(
+        self,
+        depth: int,
+        forced_input_bounds: List[np.ndarray],
+        split_list: list,
+    ):
 
         """
         Args:
@@ -59,7 +50,7 @@ class Branch:
         return self._forced_input_bounds
 
     @forced_input_bounds.setter
-    def forced_input_bounds(self, bounds):
+    def forced_input_bounds(self, bounds: List[np.ndarray]):
         self._forced_input_bounds = bounds
 
     @property
@@ -188,7 +179,9 @@ class Branch:
         ), "Tried adding new constraints before removing old"
         self.lp_solver_constraints = []
 
-        min_layer = bounds.domain.num_layers
+        # This is a bit hacky - we know this is equivalent to task_constants.num_layers,
+        # but cannot access that here
+        min_layer = len(self.forced_input_bounds)
 
         for i in range(self.depth - 1, len(old_split_list)):
             # On backtrack we have to update all nodes after the minimum layer
@@ -219,3 +212,36 @@ class Branch:
             Branch.add_constr_to_solver(bounds, solver, self.split_list[-1])
         )
         solver.grb_solver.update()
+
+    def merge_current_bounds_into_forced(self, bounds_concrete: List[np.ndarray]):
+
+        """
+        Sets forced input bounds to the best of current forced bounds and calculated
+        bounds.
+        """
+
+        # This is a bit hacky - we know this is equivalent to task_constants.num_layers,
+        # but cannot access that here
+        for i in range(  # pylint: disable=consider-using-enumerate
+            len(self.forced_input_bounds)
+        ):
+            if bounds_concrete[i] is None:
+                continue
+
+            elif self.forced_input_bounds[i] is None:
+                self.forced_input_bounds[i] = bounds_concrete[i]
+
+            else:
+                better_lower = (
+                    self.forced_input_bounds[i][:, 0] < bounds_concrete[i][:, 0]
+                )
+                self.forced_input_bounds[i][better_lower, 0] = bounds_concrete[i][
+                    better_lower, 0
+                ]
+
+                better_upper = (
+                    self.forced_input_bounds[i][:, 1] > bounds_concrete[i][:, 1]
+                )
+                self.forced_input_bounds[i][better_upper, 1] = bounds_concrete[i][
+                    better_upper, 1
+                ]

@@ -17,9 +17,9 @@ import torchvision.transforms as transform
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.algorithm.status import Status
 from src.algorithm.verification_objectives import LocalRobustnessObjective
 from src.algorithm.verinet import VeriNet
-from src.algorithm.verinet_util import Status
 from src.data_loader.nnet import NNET
 from src.util.config import LOGS_LEVEL
 from src.util.logger import get_logger
@@ -196,7 +196,6 @@ def run_benchmark(
         )
 
         solver = VeriNet(
-            model,
             gradient_descent_max_iters=5,
             gradient_descent_step=1e-1,
             gradient_descent_min_loss_change=1e-2,
@@ -253,6 +252,7 @@ def run_benchmark(
                     int(targets[i]), input_bounds, output_size=10
                 )
                 status = solver.verify(
+                    model,
                     objective,
                     timeout=timeout,
                     no_split=False,
