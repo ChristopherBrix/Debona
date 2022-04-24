@@ -302,7 +302,7 @@ class VeriNet:
             )
             self._branches_explored.value += branches_explored
 
-            if not self._finished_flag.is_set() and status.value == Status.UNSAFE.value:
+            if not self._finished_flag.is_set() and status == Status.UNSAFE:
                 self._status.value = status.value
                 self._counter_example = counter_example
                 self._finished_flag.set()

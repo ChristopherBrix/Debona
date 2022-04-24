@@ -116,62 +116,10 @@ class AbstractSShaped(AbstractMapping):
             relaxations
         """
 
-        layer_size = lower_bounds_concrete_in.shape[0]
-        relaxations = np.zeros((layer_size, 2))
-
-        # Calculate relaxations where the lower bound is equal to the upper
-        self._linear_relaxation_equal_bounds(
-            lower_bounds_concrete_in, upper_bounds_concrete_in, relaxations
+        raise Exception(
+            "TODO: If this is to be used, it needs to be moved to the correct"
+            "propagation class(es)."
         )
-
-        # Initialize the necessary variables and datastructure
-        unequal_bounds_idx = np.argwhere(
-            (lower_bounds_concrete_in != upper_bounds_concrete_in)
-        ).squeeze()
-        unequal_bounds_idx = np.atleast_1d(unequal_bounds_idx)
-
-        mixed_bounds_lower = lower_bounds_concrete_in[unequal_bounds_idx]
-        mixed_bounds_upper = upper_bounds_concrete_in[unequal_bounds_idx]
-        solved = np.zeros_like(unequal_bounds_idx)
-
-        if upper:
-            d_activation = self.derivative(mixed_bounds_upper).squeeze()
-            activation = self.propagate(mixed_bounds_lower).squeeze()
-        else:
-            d_activation = self.derivative(mixed_bounds_lower).squeeze()
-            activation = self.propagate(mixed_bounds_upper).squeeze()
-
-        # Try the line intercepting both endpoints
-        lines = self._intercept_line(
-            mixed_bounds_lower, mixed_bounds_upper, upper=upper
-        )
-        valid = np.argwhere(lines[:, 0] <= d_activation)
-        relaxations[unequal_bounds_idx[valid]] = lines[valid]
-        solved[valid] = 1
-
-        # Try the optimal tangent line
-        lines = self._tangent_line(mixed_bounds_lower, mixed_bounds_upper, upper=upper)
-        if upper:
-            valid = np.argwhere(
-                lines[:, 0] * mixed_bounds_lower + lines[:, 1] >= activation
-            )
-        else:
-            valid = np.argwhere(
-                lines[:, 0] * mixed_bounds_upper + lines[:, 1] <= activation
-            )
-
-        relaxations[unequal_bounds_idx[valid]] = lines[valid]
-        solved[valid] = 1
-
-        # Use iterative method for the rest
-        lines = self._iterative_minimal_tangent_line(
-            mixed_bounds_lower[solved != 1],
-            mixed_bounds_upper[solved != 1],
-            upper=upper,
-        )
-        relaxations[unequal_bounds_idx[solved != 1]] = lines
-
-        return relaxations
 
     def _tangent_line(
         self,
@@ -630,28 +578,10 @@ class SigmoidNaive(AbstractMapping):
             The relaxations as a Nx2 array
         """
 
-        layer_size = lower_bounds_concrete_in.shape[0]
-        relaxations = np.zeros((layer_size, 2))
-
-        a = np.min(
-            np.hstack(
-                (
-                    self.derivative(lower_bounds_concrete_in).reshape((-1, 1)),
-                    self.derivative(upper_bounds_concrete_in).reshape((-1, 1)),
-                )
-            ),
-            axis=1,
+        raise Exception(
+            "TODO: If this is to be used, it needs to be moved to the correct"
+            "propagation class(es)."
         )
-
-        if upper:
-            b = self.propagate(upper_bounds_concrete_in) - a * upper_bounds_concrete_in
-        else:
-            b = self.propagate(lower_bounds_concrete_in) - a * lower_bounds_concrete_in
-
-        relaxations[:, 0] = a
-        relaxations[:, 1] = b
-
-        return relaxations
 
     def derivative(self, x: np.ndarray) -> np.ndarray:
 

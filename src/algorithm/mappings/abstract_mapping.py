@@ -133,35 +133,6 @@ class AbstractMapping:
             f"split_point(...) not implemented in {self.__class__.__name__}"
         )
 
-    def linear_relaxation(
-        self,
-        lower_bounds_concrete_in: np.ndarray,
-        upper_bounds_concrete_in: np.ndarray,
-        upper: bool,
-    ) -> np.ndarray:
-
-        """
-        Calculates the linear relaxation
-
-        The linear relaxation is a Nx2 array, where each row represents a and b of the
-        linear equation: l(x) = ax + b
-
-        Args:
-            lower_bounds_concrete_in    : The concrete lower bounds of the input to the
-                                          nodes
-            upper_bounds_concrete_in    : The concrete upper bounds of the input to the
-                                          nodes
-            upper                       : If true, the upper relaxation is calculated,
-                                          else the lower
-
-        Returns:
-            The relaxations as a Nx2 array
-        """
-
-        raise NotImplementedError(
-            f"linear_relaxation(...) not implemented in {self.__class__.__name__}"
-        )
-
     def _linear_relaxation_equal_bounds(
         self,
         lower_bounds_concrete_in: np.ndarray,

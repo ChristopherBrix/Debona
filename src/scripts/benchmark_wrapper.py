@@ -11,16 +11,21 @@ from ast import literal_eval
 from black import sys
 
 from src.data_loader.input_data_loader import *  # pylint: disable=wildcard-import,unused-wildcard-import # noqa: F401,F403
+from src.propagation.deep_poly_propagation import (
+    DeepPolyBackwardPropagation,
+    DeepPolyForwardPropagation,
+)
 from src.scripts.benchmark import run_benchmark
 
 
 def start_benchmark():
-    assert len(sys.argv) == 11
+    assert len(sys.argv) == 12
     # pylint: disable=unbalanced-tuple-unpacking
     (
         _,
         benchmark_name,
         model_path,
+        propagation,
         conv,
         image_dir,  # pylint: disable=unused-variable
         num_images,
@@ -35,6 +40,12 @@ def start_benchmark():
 
     num_images = int(num_images)
 
+    if propagation == "DeepPolyForward":
+        propagation = DeepPolyForwardPropagation
+    else:
+        assert propagation == "DeepPolyBackward"
+        propagation = DeepPolyBackwardPropagation
+
     # The use of eval(load_func) allows us to handle the different formats for mnist and
     # cifar benchmarks.
     run_benchmark(
@@ -43,6 +54,7 @@ def start_benchmark():
         timeout=float(timeout),
         conv=literal_eval(conv),
         model_path=model_path,
+        propagation=propagation,
         result_path=f"{output_dir}/{benchmark_name}.txt",
         max_procs=int(max_procs),
     )

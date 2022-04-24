@@ -410,9 +410,7 @@ class VeriNetWorker:
         refine_output_weights = self._verification_objective.output_refinement_weights(
             self._bounds
         )
-        split = self._bounds.largest_error_split_node(
-            output_weights=refine_output_weights
-        )
+        split = self._bounds.get_next_split_node(output_weights=refine_output_weights)
         if split is None:
             return False
         layer, node = split

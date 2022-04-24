@@ -67,7 +67,7 @@ class Branch:
 
     @staticmethod
     def add_constr_to_solver(
-        bounds: AbstractDomainPropagation, lp_solver: LPSolver, split: np.ndarray
+        bounds: AbstractDomainPropagation, lp_solver: LPSolver, split: dict
     ) -> grb.Constr:
 
         """
@@ -76,8 +76,7 @@ class Branch:
         Args:
             bounds      : The NNBounds object
             lp_solver   : The LPSolver object
-            split       : The split in format (layer_num, node_num, split_x,
-                          upper_split)
+            split       : The split with entries (layer, node, split_x, upper)
 
         Returns:
               The gurobi constraint
@@ -90,22 +89,10 @@ class Branch:
             split["split_x"],
             split["upper"],
         )
-        symb_input_bounds = bounds.domain.bounds_symbolic[layer - 1][node]
 
-        if upper:
-            constr = lp_solver.grb_solver.addConstr(
-                grb.LinExpr(symb_input_bounds[:-1], input_vars)
-                + bounds.domain.error[layer - 1][node][1]
-                + symb_input_bounds[-1]
-                >= split_x
-            )
-        else:
-            constr = lp_solver.grb_solver.addConstr(
-                grb.LinExpr(symb_input_bounds[:-1], input_vars)
-                + bounds.domain.error[layer - 1][node][0]
-                + symb_input_bounds[-1]
-                <= split_x
-            )
+        constr = lp_solver.grb_solver.addConstr(
+            bounds.get_grb_constr(layer, node, split_x, upper, input_vars)
+        )
 
         lp_solver.grb_solver.update()
 
@@ -124,7 +111,10 @@ class Branch:
         solver.grb_solver.update()
 
     def add_all_constrains(
-        self, bounds: AbstractDomainPropagation, solver: LPSolver, split_list: list
+        self,
+        bounds: AbstractDomainPropagation,
+        solver: LPSolver,
+        split_list: List[dict],
     ):
 
         """
@@ -135,9 +125,9 @@ class Branch:
 
 
         Args:
-            bounds          : The bound_propagation object
-            solver          : The LPSolver
-            split_list  : The list with splits from the old branch
+            bounds     : The bound_propagation object
+            solver     : The LPSolver
+            split_list : The list with splits from the old branch
         """
 
         assert (

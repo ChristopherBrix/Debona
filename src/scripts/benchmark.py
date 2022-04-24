@@ -8,6 +8,7 @@ import os
 import random
 import time
 from shutil import copyfile, rmtree
+from typing import Type
 
 import gurobipy as grb
 import numpy as np
@@ -21,6 +22,8 @@ from src.algorithm.status import Status
 from src.algorithm.verification_objectives import LocalRobustnessObjective
 from src.algorithm.verinet import VeriNet
 from src.data_loader.nnet import NNET
+from src.propagation.abstract_domain_propagation import AbstractDomainPropagation
+from src.util import config
 from src.util.config import LOGS_LEVEL
 from src.util.logger import get_logger
 
@@ -140,6 +143,7 @@ def run_benchmark(
     result_path: str,
     targets: np.ndarray = None,
     max_procs: int = None,
+    propagation: Type[AbstractDomainPropagation] = None,
 ):
 
     """
@@ -161,6 +165,9 @@ def run_benchmark(
 
     # Get the "Academic license" print from gurobi at the beginning
     grb.Model()
+
+    if propagation is not None:
+        config.DOMAIN_PROPAGATION = propagation
 
     nnet = NNET(model_path)
     model = nnet.from_nnet_to_verinet_nn()

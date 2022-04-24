@@ -65,22 +65,17 @@ class FC(AbstractMapping):
 
         return x
 
-    def linear_relaxation(
-        self,
-        lower_bounds_concrete_in: np.ndarray,
-        upper_bounds_concrete_in: np.ndarray,
-        upper: bool,
-    ) -> np.ndarray:
-
-        """
-        Not implemented since function is linear.
-        """
-
-        msg = (
-            f"linear_relaxation(...) not implemented for {self.__class__.__name__} "
-            + "since it is linear"
+    def propagate_back(self, symbolic_bounds: np.ndarray) -> np.ndarray:
+        weight = self.params["weight"]
+        bias = self.params["bias"]
+        new_symbolic_bounds = np.empty(
+            (2, symbolic_bounds.shape[1], weight.shape[1] + 1)
         )
-        raise ActivationFunctionAbstractionException(msg)
+        new_symbolic_bounds[:, :, -1] = symbolic_bounds[:, :, -1] + np.sum(
+            symbolic_bounds[:, :, :-1] * bias[np.newaxis, np.newaxis, :], axis=2
+        )
+        new_symbolic_bounds[:, :, :-1] = symbolic_bounds[:, :, :-1] @ weight
+        return new_symbolic_bounds
 
     # noinspection PyTypeChecker
     def split_point(self, xl: float, xu: float) -> float:
@@ -177,23 +172,6 @@ class Conv2d(AbstractMapping):
         y = y_2d.detach().numpy().reshape(-1, out_size).T
 
         return y
-
-    def linear_relaxation(
-        self,
-        lower_bounds_concrete_in: np.ndarray,
-        upper_bounds_concrete_in: np.ndarray,
-        upper: bool,
-    ) -> np.ndarray:
-
-        """
-        Not implemented since function is linear.
-        """
-
-        msg = (
-            f"linear_relaxation(...) not implemented for {self.__class__.__name__} "
-            + "since it is linear"
-        )
-        raise ActivationFunctionAbstractionException(msg)
 
     # noinspection PyTypeChecker
     def split_point(self, xl: float, xu: float) -> float:
@@ -294,23 +272,6 @@ class BatchNorm2d(AbstractMapping):
         y_2d = y_2d.reshape(-1, out_size).T
 
         return y_2d
-
-    def linear_relaxation(
-        self,
-        lower_bounds_concrete_in: np.ndarray,
-        upper_bounds_concrete_in: np.ndarray,
-        upper: bool,
-    ) -> np.ndarray:
-
-        """
-        Not implemented since function is linear.
-        """
-
-        msg = (
-            f"linear_relaxation(...) not implemented for {self.__class__.__name__} "
-            + "since it is linear"
-        )
-        raise ActivationFunctionAbstractionException(msg)
 
     # noinspection PyTypeChecker
     def split_point(self, xl: float, xu: float) -> float:

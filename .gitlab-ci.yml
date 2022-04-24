@@ -105,6 +105,7 @@ example:
         ${CI_PROJECT_DIR}/example/output.txt)
   only:
     - merge_requests
+  allow_failure: true
 
 build_docker_complete:
   stage: "Build Docker image with code"

@@ -3,7 +3,7 @@ Abstract domains are the basis for the concrete implementations like DeepPoly an
 Sets.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 
@@ -23,11 +23,10 @@ class AbstractDomain:
             task_constants: Constant parameters of this task
         """
 
-        self._bounds_concrete: Optional[list] = None
-        self._bounds_symbolic: Optional[list] = None
+        self._bounds_concrete: Optional[List[np.ndarray]] = None
+        self._bounds_symbolic: Optional[List[np.ndarray]] = None
 
         self._error_matrix: Optional[list] = None
-        self._error_matrix_to_node_indices: Optional[list] = None
         self._error: Optional[list] = None
 
         self._relaxations: Optional[list] = None
@@ -36,15 +35,28 @@ class AbstractDomain:
         self._init_datastructure()
 
     @property
-    def bounds_concrete(self):
+    def bounds_concrete(self) -> List[np.ndarray]:
+        """
+        A list of Nx2 arrays with the concrete lower and upper input bounds.
+        """
+
+        assert self._bounds_concrete is not None
         return self._bounds_concrete
 
     @property
-    def bounds_symbolic(self):
+    def bounds_symbolic(self) -> List[np.ndarray]:
+        assert self._bounds_symbolic is not None
         return self._bounds_symbolic
 
     @property
-    def relaxations(self):
+    def relaxations(self) -> List[np.ndarray]:
+        """
+        A list of 2xNx2 arrays where the first dimension indicates the lower and upper
+        relaxation, the second dimension contains the nodes in the current layer and the
+        last dimension contains the parameters [a, b] in l(x) = ax + b.
+        """
+
+        assert self._relaxations is not None
         return self._relaxations
 
     @property
@@ -62,12 +74,14 @@ class AbstractDomain:
         return self._error
 
     @property
-    def error_matrix(self):
-        return self._error_matrix
+    def error_matrix(self) -> List[np.ndarray]:
+        """
+        A list of NxN' arrays with the errors, where N is the number of nodes in the
+        layer and N' is the total number of nodes in all previous layers.
+        """
 
-    @property
-    def error_matrix_to_node_indices(self):
-        return self._error_matrix_to_node_indices
+        assert self._error_matrix is not None
+        return self._error_matrix
 
     def reset_datastruct(self):
 
@@ -94,14 +108,12 @@ class AbstractDomain:
         self._relaxations: Optional[list] = [None] * num_layers
 
         self._error_matrix: Optional[list] = [None] * num_layers
-        self._error_matrix_to_node_indices: Optional[list] = [None] * num_layers
         self._error: Optional[list] = [None] * num_layers
 
         # Set the error matrices of the input layer to zero
         self._error_matrix[0] = np.zeros(
             (self._task_constants.layer_sizes[0], 0), dtype=np.float32
         )
-        self._error_matrix_to_node_indices[0] = np.zeros((0, 2), dtype=int)
 
         # Set the correct symbolic equations for input layer
         diagonal_idx = np.arange(self._task_constants.layer_sizes[0])

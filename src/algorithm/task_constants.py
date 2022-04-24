@@ -2,6 +2,8 @@
 TaskConstants store constant parameters of the task to make them available
 """
 
+from typing import List
+
 import numpy as np
 import torch
 from torch import nn
@@ -40,7 +42,7 @@ class TaskConstants:
         return len(self.layer_sizes)
 
     @property
-    def mappings(self) -> list:
+    def mappings(self) -> List[AbstractMapping]:
         return self._mappings
 
     def _read_mappings_from_torch_model(self):

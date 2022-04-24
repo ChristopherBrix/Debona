@@ -51,76 +51,6 @@ class Relu(AbstractMapping):
 
         return (x > 0) * x
 
-    def linear_relaxation(
-        self,
-        lower_bounds_concrete_in: np.ndarray,
-        upper_bounds_concrete_in: np.ndarray,
-        upper: bool,
-    ) -> np.ndarray:
-
-        """
-        Calculates the linear relaxation
-
-        The linear relaxation is a Nx2 array, where each row represents a and b of the
-        linear equation: l(x) = ax + b
-
-        The relaxations are described in detail in the paper.
-
-        Args:
-            lower_bounds_concrete_in    : The concrete lower bounds of the input to the
-                                          nodes
-            upper_bounds_concrete_in    : The concrete upper bounds of the input to the
-                                          nodes
-            upper                       : If true, the upper relaxation is calculated,
-                                          else the lower
-
-        Returns:
-            The relaxations as a Nx2 array
-        """
-
-        layer_size = lower_bounds_concrete_in.shape[0]
-        relaxations = np.zeros((layer_size, 2))
-
-        # Operating in the positive area
-        fixed_upper_idx = np.argwhere(lower_bounds_concrete_in >= 0)
-        relaxations[fixed_upper_idx, 0] = 1
-        relaxations[fixed_upper_idx, 1] = 0
-
-        # Operating in the negative area
-        fixed_lower_idx = np.argwhere(upper_bounds_concrete_in <= 0)
-        relaxations[fixed_lower_idx, :] = 0
-
-        # Operating in the non-linear area
-        mixed_idx = np.argwhere(
-            (upper_bounds_concrete_in > 0) * (lower_bounds_concrete_in < 0)
-        )
-
-        if len(mixed_idx) == 0:
-            return relaxations
-
-        xl = lower_bounds_concrete_in[mixed_idx]
-        xu = upper_bounds_concrete_in[mixed_idx]
-
-        if upper:
-            a = xu / (xu - xl)
-            b = -a * xl
-            relaxations[:, 0][mixed_idx] = a
-            relaxations[:, 1][mixed_idx] = b
-        else:
-            relaxations[:, 0][mixed_idx] = xu / (xu - xl)
-            relaxations[:, 1][mixed_idx] = 0
-
-        # Outward rounding
-        num_ops = 2
-        max_edge_dist = np.hstack((np.abs(xl), np.abs(xu))).max(axis=1)[:, np.newaxis]
-        max_err = np.spacing(
-            np.abs(relaxations[:, 0][mixed_idx])
-        ) * max_edge_dist + np.spacing(np.abs(relaxations[:, 1][mixed_idx]))
-        outward_round = max_err * num_ops if upper else -max_err * num_ops
-        relaxations[:, 1][mixed_idx] += outward_round
-
-        return relaxations
-
     def split_point(self, _xl: float, _xu: float):
 
         """
@@ -173,23 +103,6 @@ class Identity(AbstractMapping):
         """
 
         return []
-
-    def linear_relaxation(
-        self,
-        _lower_bounds_concrete_in: np.ndarray,
-        _upper_bounds_concrete_in: np.ndarray,
-        _upper: bool,
-    ) -> np.ndarray:
-
-        """
-        Not implemented since function is linear.
-        """
-
-        msg = (
-            f"linear_relaxation(...) not implemented for {self.__class__.__name__} "
-            + "since it is linear "
-        )
-        raise ActivationFunctionAbstractionException(msg)
 
     def split_point(self, _xl: float, _xu: float):
 

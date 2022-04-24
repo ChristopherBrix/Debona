@@ -440,19 +440,8 @@ class LocalRobustnessObjective(VerificationObjective):
             self.current_potential_counter = self.potential_counters.pop()
 
             input_variables = solver.input_variables.select()
-            bounds_symbolic = bounds.domain.bounds_symbolic[-1]
 
-            eq = (
-                bounds_symbolic[self.current_potential_counter, :]
-                - bounds_symbolic[self.correct_class, :]
-            )
-
-            error = (
-                bounds.domain.error_matrix[-1][self.current_potential_counter, :]
-                - bounds.domain.error_matrix[-1][self.correct_class, :]
-            )
-
-            eq[-1] += np.sum(error[error > 0])
+            eq = bounds.get_final_eq(self.current_potential_counter, self.correct_class)
             constr = grb.LinExpr(eq[:-1], input_variables) + eq[-1] >= 0
 
             self.constraints.append(solver.grb_solver.addConstr(constr))
