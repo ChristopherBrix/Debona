@@ -18,6 +18,7 @@ import torchvision.transforms as transform
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.algorithm.heuristic import Heuristic
 from src.algorithm.status import Status
 from src.algorithm.verification_objectives import LocalRobustnessObjective
 from src.algorithm.verinet import VeriNet
@@ -144,6 +145,7 @@ def run_benchmark(
     targets: np.ndarray = None,
     max_procs: int = None,
     propagation: Type[AbstractDomainPropagation] = None,
+    heuristic: Heuristic = Heuristic.DYNAMIC,
 ):
 
     """
@@ -168,6 +170,8 @@ def run_benchmark(
 
     if propagation is not None:
         config.DOMAIN_PROPAGATION = propagation
+
+    config.HEURISTIC = heuristic
 
     nnet = NNET(model_path)
     model = nnet.from_nnet_to_verinet_nn()

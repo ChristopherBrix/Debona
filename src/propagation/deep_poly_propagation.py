@@ -2,7 +2,7 @@
 Propagation using DeepPoly.
 """
 
-from typing import List, Optional
+from typing import List
 
 import gurobipy as grb
 import numpy as np
@@ -232,10 +232,10 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
 
         return eq
 
-    def get_next_split_node(self, output_weights: np.ndarray = None) -> Optional[tuple]:
+    def get_heuristic_ranking(self, output_weights: np.ndarray = None) -> List[tuple]:
 
         """
-        Returns the node with the largest weighted error effect on the output
+        Returns the order of nodes for splitting
 
         The error from overestimation is calculated for each output node with respect to
         each hidden node. This value is weighted using the given output_weights and the
@@ -247,11 +247,12 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
                               should be >= 0.
 
         Returns:
-              (layer_num, node_num) of the node with largest error effect on the output
+              List[(layer_num, node_num)] ordered by the largest error effect on the
+                output
         """
 
         if self._domain.error_matrix[-1].shape[1] == 0:
-            return None
+            return []
 
         output_weights = (
             np.ones((self._domain.layer_sizes[-1], 2))
@@ -269,12 +270,11 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
         err_matrix_pos = err_matrix_pos * output_weights[:, 1:2]
 
         weighted_error = (err_matrix_neg + err_matrix_pos).sum(axis=0)
-        max_err_idx = np.argmax(weighted_error)
+        assert len(weighted_error) == len(self.overapproximated_neurons[-1])
 
-        if weighted_error[max_err_idx] <= 0:
-            return None
-        else:
-            return self.overapproximated_neurons[-1][max_err_idx]
+        return [
+            x for _, x in sorted(zip(weighted_error, self.overapproximated_neurons[-1]))
+        ]
 
     def _compute_symbolic_bounds(self, layer_num: int):
 
@@ -624,9 +624,9 @@ class DeepPolyBackwardPropagation(DeepPolyPropagation):
 
         return eq
 
-    def get_next_split_node(self, output_weights: np.ndarray = None) -> Optional[tuple]:
+    def get_heuristic_ranking(self, output_weights: np.ndarray = None) -> List[tuple]:
         """
-        Returns the node with the largest weighted error effect on the output
+        Returns the order of nodes for splitting
 
         The error from overestimation is calculated for each output node with respect to
         each hidden node. This value is weighted using the given output_weights and the
@@ -638,15 +638,16 @@ class DeepPolyBackwardPropagation(DeepPolyPropagation):
                               should be >= 0.
 
         Returns:
-              (layer_num, node_num) of the node with largest error effect on the output
+              List[(layer_num, node_num)] ordered by the largest error effect on the
+                output
         """
 
-        earliest_layer_num = np.min(self.overapproximated_neurons[-1][:, 0])
-        node_mask = self.overapproximated_neurons[-1][:, 0] == earliest_layer_num
-        selected_nodes = self.overapproximated_neurons[-1][node_mask][:, 1]
-        max_err_idx = np.argmax(self.node_impact[earliest_layer_num][selected_nodes])
-
-        return self.overapproximated_neurons[-1][max_err_idx]
+        largest_layer_num = np.max(self.overapproximated_neurons[-1][:, 0])
+        heuristic_ranking: List[tuple] = []
+        for layer_num in reversed(range(largest_layer_num + 1)):
+            for i in np.argsort(self.node_impact[layer_num]):
+                heuristic_ranking.append((layer_num, i))
+        return heuristic_ranking
 
     def get_grb_constr(
         self, layer_num: int, node: int, split_x: float, upper: bool, input_vars: list
@@ -661,16 +662,15 @@ class DeepPolyBackwardPropagation(DeepPolyPropagation):
             upper:      Whether this is the upper branch
             input_vars: List of Gurobi input variables
         """
-
         if upper:
-            symb_input_bounds = self.domain.bounds_symbolic[layer_num - 1][0, node]
+            symb_input_bounds = self.domain.bounds_symbolic[layer_num - 1][1, node]
             return (
                 grb.LinExpr(symb_input_bounds[:-1], input_vars) + symb_input_bounds[-1]
                 >= split_x
             )
 
         else:
-            symb_input_bounds = self.domain.bounds_symbolic[layer_num - 1][1, node]
+            symb_input_bounds = self.domain.bounds_symbolic[layer_num - 1][0, node]
             return (
                 grb.LinExpr(symb_input_bounds[:-1], input_vars) + symb_input_bounds[-1]
                 <= split_x

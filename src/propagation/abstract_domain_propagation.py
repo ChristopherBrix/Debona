@@ -3,11 +3,13 @@ AbstractDomainPropagation is the basis for the concrete propagation techniques.
 """
 
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from typing import List, Optional
 
 import gurobipy as grb
 import numpy as np
 
+from src.algorithm.heuristic import Heuristic
 from src.algorithm.task_constants import TaskConstants
 from src.domains.abstract_domains import AbstractDomain
 
@@ -76,9 +78,9 @@ class AbstractDomainPropagation(ABC):
         """
 
     @abstractmethod
-    def get_next_split_node(self, output_weights: np.ndarray = None) -> Optional[tuple]:
+    def get_heuristic_ranking(self, output_weights: np.ndarray = None) -> List[tuple]:
         """
-        Returns the node with the largest weighted error effect on the output
+        Returns the order of nodes for splitting
 
         The error from overestimation is calculated for each output node with respect to
         each hidden node. This value is weighted using the given output_weights and the
@@ -90,8 +92,43 @@ class AbstractDomainPropagation(ABC):
                               should be >= 0.
 
         Returns:
-              (layer_num, node_num) of the node with largest error effect on the output
+              List[(layer_num, node_num)] ordered by the largest error effect on the
+                output
         """
+
+    def get_next_split_node(self, output_weights: np.ndarray = None) -> Optional[tuple]:
+        # This is ugly, but importing the config at the toplevel would lead to a
+        # circular import
+        from src.util import config  # pylint: disable=import-outside-toplevel
+
+        if config.HEURISTIC.value == Heuristic.DYNAMIC.value:
+            heuristic_ranking = self.get_heuristic_ranking(output_weights)
+        elif config.HEURISTIC.value == Heuristic.CACHED.value:
+            if self._task_constants.cached_heuristic_ranking is None:
+                self._task_constants.cached_heuristic_ranking = (
+                    self.get_heuristic_ranking(output_weights)
+                )
+            heuristic_ranking = self._task_constants.cached_heuristic_ranking
+        else:
+            assert config.HEURISTIC.value == Heuristic.ARCHITECTURE.value
+            heuristic_ranking = []
+            for layer, layer_size in enumerate(self._task_constants.layer_sizes):
+                mapping = self._task_constants.mappings[layer]
+                if mapping is None or mapping.is_linear:
+                    continue
+                for neuron in reversed(range(layer_size)):
+                    heuristic_ranking.append((layer, neuron))
+            heuristic_ranking = heuristic_ranking[::-1]
+
+        heuristic_ranking = deepcopy(heuristic_ranking)
+        assert self.overapproximated_neurons[-1] is not None
+        while len(heuristic_ranking) > 0:
+            layer, neuron = heuristic_ranking.pop()
+            if [layer, neuron] in self.overapproximated_neurons[-1].tolist():
+                return (layer, neuron)
+        if len(self.overapproximated_neurons[-1]) > 0:
+            return self.overapproximated_neurons[-1][-1]
+        return None
 
     @abstractmethod
     def get_final_eq(self, potential_counter, correct_class) -> np.ndarray:

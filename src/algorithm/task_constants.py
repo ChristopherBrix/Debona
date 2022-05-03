@@ -2,6 +2,7 @@
 TaskConstants store constant parameters of the task to make them available
 """
 
+import multiprocessing
 from typing import List
 
 import numpy as np
@@ -10,6 +11,8 @@ from torch import nn
 
 from src.algorithm.mappings.abstract_mapping import AbstractMapping
 from src.neural_networks.verinet_nn import VeriNetNN
+
+manager = multiprocessing.Manager()
 
 
 class TaskConstants:
@@ -20,6 +23,21 @@ class TaskConstants:
         self._layer_shapes: list = []
 
         self._read_mappings_from_torch_model()
+
+        self._cached_heuristic_ranking: list = manager.list()
+
+    @property
+    def cached_heuristic_ranking(self):
+        # print("list is", self._cached_heuristic_ranking)
+        if len(self._cached_heuristic_ranking) == 0:
+            return None
+        else:
+            return self._cached_heuristic_ranking
+
+    @cached_heuristic_ranking.setter
+    def cached_heuristic_ranking(self, value):
+        assert len(self._cached_heuristic_ranking) == 0
+        self._cached_heuristic_ranking += value
 
     @property
     def model(self) -> VeriNetNN:
