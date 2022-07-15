@@ -23,7 +23,7 @@ echo 'export PIP_CACHE_DIR=".cache/pip"' >> ~/.bashrc
 echo 'export PIPENV_PIPFILE="/nnvt/src/Pipfile"' >> ~/.bashrc
 echo 'export SHELL="/bin/bash"' >> ~/.bashrc
 echo 'export LANG="en_US.UTF-8"' >> ~/.bashrc
-source ~/.bashrc
+. ~/.bashrc
 cd ../..
 pipenv install --dev
 cd $GUROBI_HOME && pipenv run python setup.py install
