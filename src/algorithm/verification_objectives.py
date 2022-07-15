@@ -69,6 +69,9 @@ class VerificationObjective:
                 "output_bounds or output_size should be given"
             )
 
+        self.potential_counters: List[int] = []
+        self.current_potential_counter: Optional[int] = None
+
     @property
     def input_bounds(self):
         return self._input_bounds
@@ -164,7 +167,10 @@ class VerificationObjective:
         raise NotImplementedError("is_counter_example() not implemented in subclass")
 
     def initial_settings(
-        self, solver: LPSolver, bounds: AbstractDomainPropagation, safe_classes: list
+        self,
+        solver: LPSolver,
+        bounds: AbstractDomainPropagation,
+        safe_objectives: List[int],
     ):
 
         """
@@ -178,8 +184,8 @@ class VerificationObjective:
         Args:
             solver              : The LPSolver object
             bounds              : The bound_propagation object
-            safe_classes        : A list of classes that have been determined as safe in
-                                  previous branches
+            safe_objectives     : A list of objectives that have been determined as safe
+                                  in previous branches
         """
 
         raise NotImplementedError("initial_settings() not implemented in subclass")
@@ -214,13 +220,21 @@ class VerificationObjective:
         A callback function called from VeriNet after a run with the settings from the
         last time configure_next_potential_counter
 
-        Can for example be used to keep track of safe classes returned stored in
-        self._safe_classes used to guide the LPSolver
+        Keeps track of classes verified as safe
 
         Args:
             solver  : The LPSolver
             status  : The _status after the last LP run of VeriNet
         """
+
+        for constr in self.constraints:
+            solver.grb_solver.remove(constr)
+        self.constraints = []
+        solver.grb_solver.update()
+
+        if status == Status.SAFE:
+            self.safe_classes.append(self.current_potential_counter)
+        self.current_potential_counter = None
 
     # noinspection PyArgumentList
     def cleanup(self, solver: grb.Model):
@@ -238,6 +252,8 @@ class VerificationObjective:
         self.constraints = []
 
         self._safe_classes = []
+        self.potential_counters = []
+        self.current_potential_counter = None
 
 
 class LocalRobustnessObjective(VerificationObjective):
@@ -272,9 +288,6 @@ class LocalRobustnessObjective(VerificationObjective):
 
         self.correct_class: int = correct_class
         self._safe_classes: List[int] = []
-
-        self.potential_counters: List[int] = []
-        self.current_potential_counter: Optional[int] = None
 
     def is_safe(self, bounds: AbstractDomainPropagation) -> bool:
 
@@ -373,7 +386,10 @@ class LocalRobustnessObjective(VerificationObjective):
 
     # noinspection PyArgumentList,PyUnresolvedReferences
     def initial_settings(
-        self, solver: LPSolver, bounds: AbstractDomainPropagation, safe_classes: list
+        self,
+        solver: LPSolver,
+        bounds: AbstractDomainPropagation,
+        safe_objectives: List[int],
     ):
 
         """
@@ -386,11 +402,11 @@ class LocalRobustnessObjective(VerificationObjective):
         Args:
             solver              : The LPSolver object
             bounds              : The bound_propagation object
-            safe_classes        : A list of classes that have been determined as safe in
-                                  previous branches
+            safe_objectives     : A list of objectives that have been determined as safe
+                                  in previous branches
         """
 
-        self._safe_classes = safe_classes
+        self._safe_classes = safe_objectives
 
         potential_counter = np.argwhere(self.potential_counter(bounds))
 
@@ -441,7 +457,10 @@ class LocalRobustnessObjective(VerificationObjective):
 
             input_variables = solver.input_variables.select()
 
-            eq = bounds.get_final_eq(self.current_potential_counter, self.correct_class)
+            weights = np.zeros((self.output_size,))
+            weights[self.current_potential_counter] = 1
+            weights[self.correct_class] = -1
+            eq = bounds.get_final_eq(weights)
             constr = grb.LinExpr(eq[:-1], input_variables) + eq[-1] >= 0
 
             self.constraints.append(solver.grb_solver.addConstr(constr))
@@ -452,40 +471,231 @@ class LocalRobustnessObjective(VerificationObjective):
         else:
             return False
 
-    def finished_potential_counter(self, solver: LPSolver, status: Status):
 
+class ArbitraryObjective(VerificationObjective):
+    """
+    Used to calculate the loss and termination criteria for local robustness properties.
+    """
+
+    def __init__(
+        self, objectives: np.ndarray, input_bounds: np.ndarray, output_size: int = None
+    ):
         """
-        A callback function called from VeriNet after a run with the settings from the
-        last time configure_next_potential_counter
+        Args:
+            objectives      : The objectives
+            input_bounds    : Bounds on the input of the network. The first dimensions
+                              should be the same as the input to the network, the last
+                              dimension should contain the lower bounds in the first
+                              axis, and the upper bounds in the second.
+            output_size     : The number of output nodes, only needed when output bounds
+                              is None.
+        """
 
-        Keeps track of classes verified as safe
+        super().__init__(input_bounds, None, output_size)
+
+        self.objectives = objectives
+        self._safe_objectives: List[int] = []
+
+        self._input_shape = input_bounds.shape[:-1]
+        if len(self._input_shape) == 2:
+            self._input_shape = (1, *self._input_shape)  # Add channel
+        if len(self._input_shape) == 4:
+            self._input_shape = self._input_shape[1:]  # Remove batch dimension
+
+    def is_safe(self, bounds: AbstractDomainPropagation) -> bool:
+        """
+        Returns true if the correct class minimum value is larger than all other classes
+        classes maximum
 
         Args:
-            solver  : The LPSolver
-            status  : The _status after the last LP run of VeriNet
+            bounds: The ESIP object
         """
 
-        for constr in self.constraints:
-            solver.grb_solver.remove(constr)
-        self.constraints = []
-        solver.grb_solver.update()
+        return self.potential_counter(bounds).sum() == 0
 
-        if status == Status.SAFE:
-            self.safe_classes.append(self.current_potential_counter)
-        self.current_potential_counter = None
-
-    def cleanup(self, solver: grb.Model):
-
+    # noinspection PyUnresolvedReferences
+    def potential_counter(self, bounds: AbstractDomainPropagation) -> np.ndarray:
         """
-        Used to remove all settings set by initial_settings()
+        Finds the classes that are potential counter examples.
 
         Args:
-            solver  : The gurobi solver
+            bounds: The ESIP object
+        Returns:
+            A boolean array, where index i is true if class
+        """
+        concrete_lower_bounds = bounds.domain.bounds_concrete[-1][:, 0]
+        concrete_upper_bounds = bounds.domain.bounds_concrete[-1][:, 1]
+        left_side = (
+            np.where(self.objectives > 0, self.objectives, 0)[:, :, :-1]
+            * concrete_lower_bounds
+        ).sum(axis=2)
+        left_side += (
+            np.where(self.objectives < 0, self.objectives, 0)[:, :, :-1]
+            * concrete_upper_bounds
+        ).sum(axis=2)
+        left_side += self.objectives[:, :, -1]
+        potential_counter = (left_side <= 0).all(axis=1)
+
+        for safe_objective in self._safe_objectives:
+            potential_counter[safe_objective] = 0
+
+        return potential_counter
+
+    # noinspection PyUnresolvedReferences
+    def output_refinement_weights(
+        self, bounds: AbstractDomainPropagation
+    ) -> np.ndarray:
+        """
+        Returns an array with the importance weights for refinement
+
+        The potential adversarial classes have weight 1 for the upper bounds, while to
+        correct class has weight equal to the number of potential adversarial classes
+        for the lower bound. This is because tightening the bounds of the correct class
+        will affect all potential adversarial classes. The other weights are 0.
+
+        Args:
+            bounds: The ESIP object
+        Returns:
+            An Mx2 array (Number of outputs) with weights for each outputs lower bounds
+            in the first column and upper bounds in the second column.
         """
 
-        super().cleanup(solver)
-        self.potential_counters = []
-        self.current_potential_counter = None
+        potential_counter = self.potential_counter(bounds).nonzero()[0]
+        output_weights = np.zeros((self.output_size, 2), dtype=float)
+
+        assert self.objectives.shape[1] == 1
+        relevant_objectives = self.objectives[potential_counter, 0, :-1]
+        output_weights[:, 0] = np.sum(
+            np.where(relevant_objectives > 0, relevant_objectives, 0), axis=0
+        )
+        output_weights[:, 1] = np.sum(
+            np.where(relevant_objectives < 0, relevant_objectives, 0), axis=0
+        )
+
+        return output_weights
+
+    def grad_descent_losses(
+        self, lp_output: torch.Tensor, bounds: AbstractDomainPropagation
+    ) -> Callable:
+        """
+        Returns the loss function for gradient descent.
+
+        Args:
+            lp_output   : The values of the output variables from the lp solver
+            bounds      : The ESIP object
+
+        Returns:
+            A generator with the loss function
+        """
+        # minimize all parts of the conjunction
+        return lambda y: (
+            y[0, :]
+            * torch.tensor(
+                self.objectives[self.current_potential_counter, :, :-1].sum(axis=0)
+            )
+        ).sum(axis=0)
+
+    def is_counter_example(self, y: np.ndarray) -> bool:
+        """
+        Returns True if the output for another class is larger than the output for the
+        correct class.
+
+        Args:
+            y: The output of the neural network
+        """
+        res = (
+            (y[0, :] * self.objectives[:, :, :-1]).sum(axis=2)
+            + self.objectives[:, :, -1]
+            <= 0
+        ).all(axis=1).sum() > 0
+        return res
+
+    # noinspection PyArgumentList,PyUnresolvedReferences
+    def initial_settings(
+        self,
+        solver: LPSolver,
+        bounds: AbstractDomainPropagation,
+        safe_objectives: List[int],
+    ):
+        """
+        Does initial setup and adjusts lp solver constraints
+
+        For this verification problem, we use ESIP to identify potential counter example
+        and constrain the output upper bound in the LPSolver for the correct class
+
+        Args:
+            solver              : The LPSolver object
+            bounds              : The ESIP object
+            safe_classes        : A list of classes that have been determined as safe in
+                                  previous branches
+        """
+
+        self._safe_objectives = safe_objectives
+
+        potential_counter = np.argwhere(self.potential_counter(bounds))
+
+        if len(potential_counter) == 0:
+            return
+        else:
+            potential_counter = potential_counter.reshape(-1)
+
+        potential_counter_sorted_idx = bounds.domain.bounds_concrete[-1][
+            potential_counter, 1
+        ].argsort()
+        self.potential_counters = list(potential_counter[potential_counter_sorted_idx])
+
+        # todo: Can this functionality be restored?
+        # # Correct class maximum can't be larger than the maximum of target class
+        # potential_counter_max = bounds.domain.bounds_concrete[-1][
+        #     potential_counter, 1
+        # ].max()
+        # if potential_counter_max < solver.output_variables[self.correct_class].ub:
+        #     solver.output_variables[self.correct_class].ub = potential_counter_max
+
+    def configure_next_potential_counter(
+        self, solver: LPSolver, bounds: AbstractDomainPropagation
+    ) -> bool:
+        """
+        Configures the LPSolver for the next potential counter
+
+        Chooses the next potential counter and adds the necessary the relevant
+        constraints to the LPSolver
+
+        Args:
+            solver              : The LPSolver object
+            bounds              : The ESIP object
+        Returns:
+            True if potential counter we have a potential counter, else False
+        """
+
+        assert (
+            len(self.constraints) == 0
+        ), "Tried adding new constraints before removing old"
+
+        if len(self.potential_counters) > 0:
+
+            self.constraints = []
+
+            self.current_potential_counter = self.potential_counters.pop()
+
+            input_variables = solver.input_variables.select()
+            assert len(self.objectives[self.current_potential_counter]) == 1
+            weights = self.objectives[self.current_potential_counter][0][:-1]
+            assert len(weights) == self.output_size, (
+                len(weights),
+                self.output_size,
+            )
+            bias = self.objectives[self.current_potential_counter][0][-1]
+            eq = bounds.get_final_eq(weights, bias)
+            constr = grb.LinExpr(eq[:-1], input_variables) + eq[-1] >= 0
+
+            self.constraints.append(solver.grb_solver.addConstr(constr))
+
+            solver.grb_solver.update()
+            return True
+
+        else:
+            return False
 
 
 class VerificationObjectiveException(Exception):

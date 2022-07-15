@@ -7,6 +7,8 @@ Author: Patrick Henriksen <patrick@henriksen.as>
 from typing import Optional, Tuple, Union
 
 import onnx
+import onnx2pytorch
+import onnx2pytorch.operations.flatten
 import onnx.numpy_helper
 import torch
 import torch.nn as nn
@@ -33,18 +35,17 @@ class ONNXParser:
             The VeriNetNN model.
         """
 
-        nodes = self.model.graph.node
-
-        curr_input_idx = nodes[0].input[0]
+        print(onnx.helper.printable_graph(self.model.graph))
+        converted_model = onnx2pytorch.ConvertModel(self.model)
+        print(converted_model)
         mappings = []
-
-        for node in nodes:
-
-            mapping, curr_input_idx = self._process_node(curr_input_idx, node)
-
-            if mapping is not None:
-                mappings.append(mapping)
-
+        for i, layer in enumerate(list(converted_model.modules())[1:]):
+            print(i, layer, type(layer))
+            if isinstance(layer, onnx2pytorch.operations.flatten.Flatten):
+                print("Skipping flatten")
+            else:
+                mappings.append(layer)
+        print("Mappings", mappings)
         self.torch_model = VeriNetNN(mappings)
 
         return self.torch_model

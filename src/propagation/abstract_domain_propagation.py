@@ -131,13 +131,13 @@ class AbstractDomainPropagation(ABC):
         return None
 
     @abstractmethod
-    def get_final_eq(self, potential_counter, correct_class) -> np.ndarray:
+    def get_final_eq(self, weights: np.ndarray, bias: float = 0.0) -> np.ndarray:
         """
         Computes the final eq used for the LP solver
 
         Args:
-            potential_counter : The potential counter example class
-            correct_class     : The correct class
+            weights: How each output neuron should be weighted. Correct class < 0
+            bias: Additional bias
 
         Returns:
             The equation putting the potential counter example and the correct class

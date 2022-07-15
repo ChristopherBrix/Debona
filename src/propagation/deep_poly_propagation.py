@@ -206,27 +206,23 @@ class DeepPolyPropagation(AbstractDomainPropagation):
 class DeepPolyForwardPropagation(DeepPolyPropagation):
     """Class that implements the DeepPoly forward propagation algorithm"""
 
-    def get_final_eq(self, potential_counter, correct_class) -> np.ndarray:
+    def get_final_eq(self, weights: np.ndarray, bias: float = 0.0) -> np.ndarray:
         """
         Computes the final eq used for the LP solver
 
         Args:
-            potential_counter : The potential counter example class
-            correct_class     : The correct class
+            weights: How each output neuron should be weighted. Correct class < 0
+            bias: Additional bias
 
         Returns:
             The equation putting the potential counter example and the correct class
             into relation.
         """
         bounds_symbolic = self.domain.bounds_symbolic[-1]
-        eq: np.ndarray = (
-            bounds_symbolic[potential_counter, :] - bounds_symbolic[correct_class, :]
-        )
+        eq: np.ndarray = np.sum(bounds_symbolic * weights[:, np.newaxis], axis=0)
+        eq[-1] += bias
 
-        error = (
-            self.domain.error_matrix[-1][potential_counter, :]
-            - self.domain.error_matrix[-1][correct_class, :]
-        )
+        error = np.sum(self.domain.error_matrix[-1] * weights[:, np.newaxis], axis=0)
 
         eq[-1] += np.sum(error[error > 0])
 
@@ -600,13 +596,13 @@ class DeepPolyBackwardPropagation(DeepPolyPropagation):
 
         return symbolic_bounds
 
-    def get_final_eq(self, potential_counter, correct_class) -> np.ndarray:
+    def get_final_eq(self, weights: np.ndarray, bias: float = 0.0) -> np.ndarray:
         """
         Computes the final eq used for the LP solver
 
         Args:
-            potential_counter : The potential counter example class
-            correct_class     : The correct class
+            weights: How each output neuron should be weighted. Correct class < 0
+            bias: Additional bias
 
         Returns:
             The equation putting the potential counter example and the correct class
@@ -614,8 +610,8 @@ class DeepPolyBackwardPropagation(DeepPolyPropagation):
         """
 
         pseudo_last_layer = np.zeros((2, 1, self._task_constants.layer_sizes[-1] + 1))
-        pseudo_last_layer[:, 0, correct_class] = -1
-        pseudo_last_layer[:, 0, potential_counter] = 1
+        pseudo_last_layer[:, 0, :-1] = weights
+        pseudo_last_layer[:, 0, -1] = bias
 
         bounds_symbolic = self._get_symbolic_equation(
             self._task_constants.num_layers, pseudo_last_layer
