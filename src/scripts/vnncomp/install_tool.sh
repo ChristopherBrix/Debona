@@ -21,9 +21,9 @@ pipenv_dir=`dirname $(dirname $(pwd))`
 ed -s ~/.bashrc <<EOF
 0 i
 export GUROBI_HOME="/opt/gurobi950/linux64"
-export PATH="${PATH}:${GUROBI_HOME}/bin"
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GUROBI_HOME}/lib"
-export GRB_LICENSE_FILE="$GUROBI_HOME/gurobi.lic"
+export PATH="\${PATH}:\${GUROBI_HOME}/bin"
+export LD_LIBRARY_PATH="\${LD_LIBRARY_PATH}:\${GUROBI_HOME}/lib"
+export GRB_LICENSE_FILE="\${GUROBI_HOME}/gurobi.lic"
 
 export PIPENV_VENV_IN_PROJECT="enabled"
 export PIPENV_CACHE_DIR=".cache/pipenv"
@@ -38,3 +38,4 @@ EOF
 cd $pipenv_dir
 pipenv install --dev
 cd $GUROBI_HOME && pipenv run python setup.py install
+grbprobe
