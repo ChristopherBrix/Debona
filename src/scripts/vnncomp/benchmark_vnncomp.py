@@ -18,9 +18,11 @@ from src.algorithm.status import Status
 from src.algorithm.verification_objectives import ArbitraryObjective
 from src.algorithm.verinet import VeriNet
 from src.data_loader.onnx_parser import ONNXParser
-from src.propagation.deep_poly_propagation import DeepPolyBackwardPropagation
+
+# from src.propagation.deep_poly_propagation import DeepPolyBackwardPropagation
 from src.scripts.vnncomp import vnnlib
-from src.util import config
+
+# from src.util import config
 
 RANDOM_SEED: int = 0
 torch.manual_seed(RANDOM_SEED)
@@ -34,7 +36,7 @@ if __name__ == "__main__":
     result_path = sys.argv[3]
     timeout: int = int(float(sys.argv[4]))
 
-    config.DOMAIN_PROPAGATION = DeepPolyBackwardPropagation
+    # config.DOMAIN_PROPAGATION = DeepPolyBackwardPropagation
 
     # Get the "Academic license" print from gurobi at the beginning
     grb.Model()
