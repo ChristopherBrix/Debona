@@ -14,20 +14,27 @@ cd /opt && \
     tar -zxf gurobi9.5.0_linux64.tar.gz && \
     rm gurobi9.5.0_linux64.tar.gz && \
     cd -
-echo 'export GUROBI_HOME="/opt/gurobi950/linux64"' >> ~/.bashrc
-echo 'export PATH="${PATH}:${GUROBI_HOME}/bin"' >> ~/.bashrc
-echo 'export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GUROBI_HOME}/lib"' >> ~/.bashrc
-echo 'export GRB_LICENSE_FILE="$GUROBI_HOME/gurobi.lic"' >> ~/.bashrc
 
 # pipenv
 python3.8 -m pip install pipenv==11.9.0
-echo 'export PIPENV_VENV_IN_PROJECT="enabled"' >> ~/.bashrc
-echo 'export PIPENV_CACHE_DIR=".cache/pipenv"' >> ~/.bashrc
-echo 'export PIP_CACHE_DIR=".cache/pip"' >> ~/.bashrc
-echo 'export PIPENV_PIPFILE="/nnvt/src/Pipfile"' >> ~/.bashrc
-echo 'export SHELL="/bin/bash"' >> ~/.bashrc
-echo 'export LANG="en_US.UTF-8"' >> ~/.bashrc
+pipenv_dir=`dirname $(dirname $(pwd))`
+ed -s ~/.bashrc <<EOF
+0 i
+export GUROBI_HOME="/opt/gurobi950/linux64"
+export PATH="${PATH}:${GUROBI_HOME}/bin"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GUROBI_HOME}/lib"
+export GRB_LICENSE_FILE="$GUROBI_HOME/gurobi.lic"
+
+export PIPENV_VENV_IN_PROJECT="enabled"
+export PIPENV_CACHE_DIR=".cache/pipenv"
+export PIP_CACHE_DIR=".cache/pip"
+export PIPENV_PIPFILE="$pipenv_dir/Pipfile"
+export SHELL="/bin/bash"
+export LANG="en_US.UTF-8"
+.
+w
+EOF
 . ~/.bashrc
-cd ../..
+cd $pipenv_dir
 pipenv install --dev
 cd $GUROBI_HOME && pipenv run python setup.py install
