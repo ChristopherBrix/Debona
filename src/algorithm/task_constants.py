@@ -118,6 +118,12 @@ class TaskConstants:
             if isinstance(attr, torch.Tensor):
                 self._mappings[-1].params[param] = attr.detach().numpy()
             else:
+                if attr is None:
+                    print(
+                        f"Warning: param {param} of mapping {self._mappings[-1]} is "
+                        "None"
+                    )
+                    attr = np.array(0)
                 self._mappings[-1].params[param] = attr
 
         # Calculate the output shape of the layer
