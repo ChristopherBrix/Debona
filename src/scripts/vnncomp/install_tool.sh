@@ -1,3 +1,7 @@
+cat ~/.bashrc
+sed -z 's/# If not running interactively, don'"'"'t do anything\ncase $- in\n    *i*) ;;\n      *) return;;\nesac//g' ~/.bashrc
+cat ~/.bashrc
+
 # Basic setup
 apt-get update
 apt-get install -y git python3.8 python3.8-dev python3.8-distutils curl wget
