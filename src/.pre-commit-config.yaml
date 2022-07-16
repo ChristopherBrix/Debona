@@ -12,7 +12,7 @@ repos:
     entry: black
     language: python
     language_version: python3.8
-    args: ['--experimental-string-processing']
+    args: ['--preview']
     files: \.py$
   - id: flake8
     name: flake8

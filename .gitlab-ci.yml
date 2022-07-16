@@ -43,7 +43,7 @@ black:
     - git diff --name-only --diff-filter=d origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
         | { grep "\.py$" || test $? = 1; }
         | xargs --no-run-if-empty pipenv run black --check
-            --experimental-string-processing
+            --preview
   only:
     - merge_requests
 
