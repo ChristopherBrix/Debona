@@ -536,7 +536,7 @@ class ArbitraryObjective(VerificationObjective):
         left_side += self.objectives[:, :, -1]
         potential_counter = (left_side <= 0).all(axis=1)
 
-        for safe_objective in self._safe_objectives:
+        for safe_objective in self.safe_classes:
             potential_counter[safe_objective] = 0
 
         return potential_counter
@@ -568,7 +568,7 @@ class ArbitraryObjective(VerificationObjective):
         output_weights[:, 0] = np.sum(
             np.where(relevant_objectives > 0, relevant_objectives, 0), axis=0
         )
-        output_weights[:, 1] = np.sum(
+        output_weights[:, 1] = -np.sum(
             np.where(relevant_objectives < 0, relevant_objectives, 0), axis=0
         )
 
@@ -588,11 +588,10 @@ class ArbitraryObjective(VerificationObjective):
             A generator with the loss function
         """
         # minimize all parts of the conjunction
+
         return lambda y: (
             y[0, :]
-            * torch.tensor(
-                self.objectives[self.current_potential_counter, :, :-1].sum(axis=0)
-            )
+            * torch.tensor(self.objectives[self.current_potential_counter, 0, :-1])
         ).sum(axis=0)
 
     def is_counter_example(self, y: np.ndarray) -> bool:
@@ -629,8 +628,7 @@ class ArbitraryObjective(VerificationObjective):
             safe_classes        : A list of classes that have been determined as safe in
                                   previous branches
         """
-
-        self._safe_objectives = safe_objectives
+        self._safe_classes = safe_objectives
 
         potential_counter = np.argwhere(self.potential_counter(bounds))
 
@@ -639,9 +637,28 @@ class ArbitraryObjective(VerificationObjective):
         else:
             potential_counter = potential_counter.reshape(-1)
 
-        potential_counter_sorted_idx = bounds.domain.bounds_concrete[-1][
-            potential_counter, 1
-        ].argsort()
+        potential_counter_sorted_idx = (
+            (
+                (
+                    bounds.domain.bounds_concrete[-1][:, 0]
+                    * np.where(
+                        self.objectives[potential_counter, 0, :-1] > 0,
+                        self.objectives[potential_counter, 0, :-1],
+                        0,
+                    )
+                )
+                - (
+                    bounds.domain.bounds_concrete[-1][:, 1]
+                    * np.where(
+                        self.objectives[potential_counter, 0, :-1] < 0,
+                        self.objectives[potential_counter, 0, :-1],
+                        0,
+                    )
+                )
+            ).sum(axis=1)
+            + self.objectives[potential_counter, 0, -1]
+        ).argsort()
+
         self.potential_counters = list(potential_counter[potential_counter_sorted_idx])
 
         # todo: Can this functionality be restored?
@@ -680,7 +697,7 @@ class ArbitraryObjective(VerificationObjective):
 
             input_variables = solver.input_variables.select()
             assert len(self.objectives[self.current_potential_counter]) == 1
-            weights = self.objectives[self.current_potential_counter][0][:-1]
+            weights = -self.objectives[self.current_potential_counter][0][:-1]
             assert len(weights) == self.output_size, (
                 len(weights),
                 self.output_size,

@@ -84,3 +84,9 @@ if __name__ == "__main__":
             f.write("violated")
         else:
             f.write("run_instance_timeout")
+
+        print(
+            f"Final result of input: {status}, branches explored:"
+            f" {solver.branches_explored}, max depth: {solver.max_depth}, time"
+            f" spent: {time.time()-start:.2f} seconds\n"
+        )
