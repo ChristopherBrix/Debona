@@ -123,7 +123,7 @@ class TaskConstants:
                         f"Warning: param {param} of mapping {self._mappings[-1]} is "
                         "None"
                     )
-                    attr = np.array(0)
+                    attr = np.zeros((1,))
                 self._mappings[-1].params[param] = attr
 
         # Calculate the output shape of the layer
