@@ -35,17 +35,13 @@ class ONNXParser:
             The VeriNetNN model.
         """
 
-        print(onnx.helper.printable_graph(self.model.graph))
         converted_model = onnx2pytorch.ConvertModel(self.model)
-        print(converted_model)
         mappings = []
-        for i, layer in enumerate(list(converted_model.modules())[1:]):
-            print(i, layer, type(layer))
+        for layer in enumerate(list(converted_model.modules())[1:]):
             if isinstance(layer, onnx2pytorch.operations.flatten.Flatten):
                 print("Skipping flatten")
             else:
                 mappings.append(layer)
-        print("Mappings", mappings)
         self.torch_model = VeriNetNN(mappings)
 
         return self.torch_model
