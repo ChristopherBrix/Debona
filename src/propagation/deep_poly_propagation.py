@@ -269,7 +269,11 @@ class DeepPolyForwardPropagation(DeepPolyPropagation):
         assert len(weighted_error) == len(self.overapproximated_neurons[-1])
 
         return [
-            x for _, x in sorted(zip(weighted_error, self.overapproximated_neurons[-1]))
+            x
+            for _, x in sorted(
+                zip(weighted_error, self.overapproximated_neurons[-1]),
+                key=lambda t: t[0],
+            )
         ]
 
     def _compute_symbolic_bounds(self, layer_num: int):
