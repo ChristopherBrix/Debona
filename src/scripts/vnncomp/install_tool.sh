@@ -33,5 +33,35 @@ EOF
 . ~/.bashrc
 cd $pipenv_dir
 su ubuntu -c 'pipenv install --dev'
+
+cd ~
+git clone https://github.com/xianyi/OpenBLAS
+cd OpenBLAS
+make FC=gfortran
+sudo make PREFIX=/opt/openblas install
+cd ..
+git clone https://github.com/numpy/numpy
+cd numpy/
+git checkout v1.22.4 
+cat << EOF > site.cfg
+[default]
+include_dirs = /opt/openblas/include
+library_dirs = /opt/openblas/lib
+ 
+[openblas]
+openblas_libs = openblas
+library_dirs = /opt/openblas/lib
+ 
+[lapack]
+lapack_libs = openblas
+library_dirs = /opt/openblas/lib
+EOF
+
+pipenv run pip install cython==0.29.30
+git submodule update --init
+pipenv run python setup.py build
+pipenv run python setup.py install
+
+
 cd $GUROBI_HOME && su ubuntu -c 'pipenv run sudo python setup.py install'
 grbprobe
