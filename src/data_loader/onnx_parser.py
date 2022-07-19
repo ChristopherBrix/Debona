@@ -37,7 +37,7 @@ class ONNXParser:
 
         converted_model = onnx2pytorch.ConvertModel(self.model)
         mappings = []
-        for layer in enumerate(list(converted_model.modules())[1:]):
+        for _, layer in enumerate(list(converted_model.modules())[1:]):
             if isinstance(layer, onnx2pytorch.operations.flatten.Flatten):
                 print("Skipping flatten")
             else:
