@@ -18,13 +18,11 @@ from src.algorithm.status import Status
 from src.algorithm.verification_objectives import ArbitraryObjective
 from src.algorithm.verinet import VeriNet
 from src.data_loader.onnx_parser import ONNXParser
-
 from src.propagation.deep_poly_propagation import (
     DeepPolyBackwardPropagation,
     DeepPolyForwardPropagation,
 )
 from src.scripts.vnncomp import vnnlib
-
 from src.util import config
 
 RANDOM_SEED: int = 0
@@ -33,12 +31,14 @@ random.seed(RANDOM_SEED)
 np.random.seed(RANDOM_SEED)
 
 if __name__ == "__main__":
-    assert len(sys.argv) == 6
+    assert len(sys.argv) == 7
     model_path = sys.argv[1]
     vnnlib_path = sys.argv[2]
     result_path = sys.argv[3]
     timeout: int = int(float(sys.argv[4]))
-    forward_prop: bool = bool(sys.argv[5])
+    forward_prop: bool = sys.argv[5] == "1"
+    print_counterex: bool = sys.argv[6] == "1"
+    print(f"{forward_prop=}, {print_counterex=}")
 
     if forward_prop:
         print("Using forward propagation")
@@ -93,6 +93,8 @@ if __name__ == "__main__":
             f.write("holds")
         elif status == Status.UNSAFE:
             f.write("violated")
+            if print_counterex:
+                print("Counterexample", solver.counter_example[:])
         else:
             f.write("run_instance_timeout")
 
