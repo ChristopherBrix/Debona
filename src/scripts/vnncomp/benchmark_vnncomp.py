@@ -95,6 +95,10 @@ if __name__ == "__main__":
             f.write("violated")
             if print_counterex:
                 print("Counterexample", solver.counter_example[:])
+            else:
+                print(
+                    "To print the counterexample, rerun with the last command line argument set to '1'"
+                )
         else:
             f.write("run_instance_timeout")
 
