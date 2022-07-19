@@ -563,8 +563,11 @@ class ArbitraryObjective(VerificationObjective):
         potential_counter = self.potential_counter(bounds).nonzero()[0]
         output_weights = np.zeros((self.output_size, 2), dtype=float)
 
-        assert self.objectives.shape[1] == 1
-        relevant_objectives = self.objectives[potential_counter, 0, :-1]
+        if self.objectives.shape[1] == 1:
+            objs = self.objectives[:, 0]
+        else:
+            objs = np.sum(self.objectives, axis=1)
+        relevant_objectives = objs[potential_counter, :-1]
         output_weights[:, 0] = np.sum(
             np.where(relevant_objectives > 0, relevant_objectives, 0), axis=0
         )
@@ -696,13 +699,16 @@ class ArbitraryObjective(VerificationObjective):
             self.current_potential_counter = self.potential_counters.pop()
 
             input_variables = solver.input_variables.select()
-            assert len(self.objectives[self.current_potential_counter]) == 1
-            weights = -self.objectives[self.current_potential_counter][0][:-1]
+            if len(self.objectives[self.current_potential_counter]) == 1:
+                objs = self.objectives[self.current_potential_counter][0]
+            else:
+                objs = np.sum(self.objectives[self.current_potential_counter], axis=0)
+            weights = -objs[:-1]
             assert len(weights) == self.output_size, (
                 len(weights),
                 self.output_size,
             )
-            bias = self.objectives[self.current_potential_counter][0][-1]
+            bias = objs[-1]
             eq = bounds.get_final_eq(weights, bias)
             constr = grb.LinExpr(eq[:-1], input_variables) + eq[-1] >= 0
 
