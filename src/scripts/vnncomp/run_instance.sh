@@ -25,8 +25,5 @@ if grep -q "run_instance_timeout" "$current_dir/$RESULTS_FILE"; then
 	pipenv run python scripts/vnncomp/benchmark_vnncomp.py "$current_dir/$ONNX_FILE" "$current_dir/$VNNLIB_FILE" "$current_dir/$RESULTS_FILE" $(($TIMEOUT-10)) 0 0
 fi
 
-if grep -q "violated" "$current_dir/$RESULTS_FILE"; then
-	echo "sat" > "$current_dir/$RESULTS_FILE"
-elif grep -q "holds" "$current_dir/$RESULTS_FILE"; then
-	echo "unsat" > "$current_dir/$RESULTS_FILE"
-fi
+sed -i "s/violated/sat/g" "$current_dir/$RESULTS_FILE"
+sed -i "s/holds/unsat/g" "$current_dir/$RESULTS_FILE"

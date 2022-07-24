@@ -304,7 +304,7 @@ class VeriNet:
 
             if not self._finished_flag.is_set() and status == Status.UNSAFE:
                 self._status.value = status.value
-                self._counter_example = counter_example
+                self._counter_example[:] = counter_example[0]
                 self._finished_flag.set()
 
             elif (

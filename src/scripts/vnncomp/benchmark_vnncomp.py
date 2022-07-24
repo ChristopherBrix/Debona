@@ -81,8 +81,9 @@ if __name__ == "__main__":
         objective = ArbitraryObjective(
             objectives, input_bounds, output_size=output_nodes
         )
+        pytorch_model = onnx_parser.to_pytorch()
         status = solver.verify(
-            model=onnx_parser.to_pytorch(),
+            model=pytorch_model,
             verification_objective=objective,
             timeout=timeout,
             no_split=False,
@@ -90,17 +91,20 @@ if __name__ == "__main__":
             verbose=False,
         )
         if status == Status.SAFE:
-            f.write("holds")
+            f.write("holds\n")
         elif status == Status.UNSAFE:
-            f.write("violated")
-            if print_counterex:
-                print("Counterexample", solver.counter_example[:])
-            else:
-                print(
-                    "To print the counterexample, rerun with the last command line argument set to '1'"
-                )
+            f.write("violated\n")
+            output: torch.Tensor = pytorch_model(
+                torch.Tensor([solver.counter_example[:]])
+            )
+            f.write("(\n")
+            for i, x in enumerate(solver.counter_example[:]):
+                f.write(f"(X_{i} {x})\n")
+            for i, x in enumerate(output.detach().numpy()[0]):
+                f.write(f"(Y_{i} {x})\n")
+            f.write(")\n")
         else:
-            f.write("run_instance_timeout")
+            f.write("run_instance_timeout\n")
 
         print(
             f"Final result of input: {status}, branches explored:"
