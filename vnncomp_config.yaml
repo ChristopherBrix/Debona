@@ -1,5 +1,5 @@
 name: Debona
-ami: ami-0280f3286512b1b99, 
+ami: ami-0280f3286512b1b99
 scripts_dir: .
 manual_installation_step: True
 run_installation_script_as_root: True
