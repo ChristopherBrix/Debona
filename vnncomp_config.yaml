@@ -1,4 +1,4 @@
-name: Your Tool Name
+name: Debona
 ami: ami-0280f3286512b1b99, 
 scripts_dir: .
 manual_installation_step: True
