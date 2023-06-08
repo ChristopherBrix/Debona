@@ -1,0 +1,11 @@
+name: Your Tool Name
+ami: ami-0280f3286512b1b99, 
+scripts_dir: .
+manual_installation_step: True
+run_installation_script_as_root: True
+run_post_installation_script_as_root: True
+run_toolkit_as_root: True
+description: >
+  Debona, a tool for verification of neural networks.
+  
+  This is the version used in the VNN Comp 2022
